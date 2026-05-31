@@ -1,4 +1,4 @@
-This is XeTeX, Version 3.141592653-2.6-0.999995 (TeX Live 2023/Debian) (preloaded format=xelatex 2026.5.21)  31 MAY 2026 16:07
+This is XeTeX, Version 3.141592653-2.6-0.999995 (TeX Live 2023/Debian) (preloaded format=xelatex 2026.5.21)  31 MAY 2026 18:26
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -691,6 +691,12 @@ File: listings.cfg 2023/02/27 1.9 listings configuration
 ))
 Package: listings 2023/02/27 1.9 (Carsten Heinz)
 
+(/usr/share/texlive/texmf-dist/tex/latex/colortbl/colortbl.sty
+Package: colortbl 2022/06/20 v1.0f Color table columns (DPC)
+\everycr=\toks44
+\minrowclearance=\skip70
+\rownum=\count338
+)
 (/usr/share/texlive/texmf-dist/tex/latex/listings/lstlang1.sty
 File: lstlang1.sty 2023/02/27 1.9 listings language file
 )
@@ -702,8 +708,8 @@ Package: tcolorbox 2024/01/10 version 6.2.0 text color boxes
 
 (/usr/share/texlive/texmf-dist/tex/latex/tools/verbatim.sty
 Package: verbatim 2023-11-06 v1.5v LaTeX2e package for verbatim enhancements
-\every@verbatim=\toks44
-\verbatim@line=\toks45
+\every@verbatim=\toks45
+\verbatim@line=\toks46
 \verbatim@in@stream=\read4
 )
 (/usr/share/texlive/texmf-dist/tex/latex/environ/environ.sty
@@ -716,9 +722,9 @@ Package: trimspaces 2009/09/17 v1.1 Trim spaces around a token list
 \tcb@upperbox=\box80
 \tcb@lowerbox=\box81
 \tcb@phantombox=\box82
-\c@tcbbreakpart=\count338
-\c@tcblayer=\count339
-\c@tcolorbox@number=\count340
+\c@tcbbreakpart=\count339
+\c@tcblayer=\count340
+\c@tcolorbox@number=\count341
 \l__tcobox_tmpa_box=\box83
 \l__tcobox_tmpa_dim=\dimen309
 \tcb@temp=\box84
@@ -795,11 +801,11 @@ Package: gettitlestring 2019/12/15 v1.6 Cleanup title references (HO)
 (/usr/share/texlive/texmf-dist/tex/latex/kvoptions/kvoptions.sty
 Package: kvoptions 2022-06-15 v3.15 Key value format for package options (HO)
 ))
-\c@section@level=\count341
+\c@section@level=\count342
 )
 \@linkdim=\dimen310
-\Hy@linkcounter=\count342
-\Hy@pagecounter=\count343
+\Hy@linkcounter=\count343
+\Hy@pagecounter=\count344
 
 (/usr/share/texlive/texmf-dist/tex/latex/hyperref/pd1enc.def
 File: pd1enc.def 2024-01-20 v7.01h Hyperref: PDFDocEncoding definition (HO)
@@ -807,7 +813,7 @@ File: pd1enc.def 2024-01-20 v7.01h Hyperref: PDFDocEncoding definition (HO)
 (/usr/share/texlive/texmf-dist/tex/generic/intcalc/intcalc.sty
 Package: intcalc 2019/12/15 v1.3 Expandable calculations with integers (HO)
 )
-\Hy@SavedSpaceFactor=\count344
+\Hy@SavedSpaceFactor=\count345
 
 (/usr/share/texlive/texmf-dist/tex/latex/hyperref/puenc.def
 File: puenc.def 2024-01-20 v7.01h Hyperref: PDF Unicode definition (HO)
@@ -819,7 +825,7 @@ Package hyperref Info: Plain pages OFF on input line 4194.
 Package hyperref Info: Backreferencing OFF on input line 4199.
 Package hyperref Info: Implicit mode ON; LaTeX internals redefined.
 Package hyperref Info: Bookmarks ON on input line 4446.
-\c@Hy@tempcnt=\count345
+\c@Hy@tempcnt=\count346
 
 (/usr/share/texlive/texmf-dist/tex/latex/url/url.sty
 \Urlmuskip=\muskip17
@@ -835,7 +841,7 @@ Package: bitset 2019/12/09 v1.3 Handle bit-vector datatype (HO)
 Package: bigintcalc 2019/12/15 v1.5 Expandable calculations on big integers (HO
 )
 ))
-\Fld@menulength=\count346
+\Fld@menulength=\count347
 \Field@Width=\dimen312
 \Fld@charsize=\dimen313
 Package hyperref Info: Hyper figures OFF on input line 6063.
@@ -850,9 +856,9 @@ Package hyperref Info: PDF/A mode OFF on input line 6093.
 Package: atbegshi-ltx 2021/01/10 v1.0c Emulation of the original atbegshi
 package with kernel methods
 )
-\Hy@abspage=\count347
-\c@Item=\count348
-\c@Hfootnote=\count349
+\Hy@abspage=\count348
+\c@Item=\count349
+\c@Hfootnote=\count350
 )
 Package hyperref Info: Driver (autodetected): hxetex.
 
@@ -864,10 +870,10 @@ Package: stringenc 2019/11/29 v1.12 Convert strings between diff. encodings (HO
 )
 )
 \pdfm@box=\box92
-\c@Hy@AnnotLevel=\count350
-\HyField@AnnotCount=\count351
-\Fld@listcount=\count352
-\c@bookmark@seq@number=\count353
+\c@Hy@AnnotLevel=\count351
+\HyField@AnnotCount=\count352
+\Fld@listcount=\count353
+\c@bookmark@seq@number=\count354
 
 (/usr/share/texlive/texmf-dist/tex/latex/rerunfilecheck/rerunfilecheck.sty
 Package: rerunfilecheck 2022-07-10 v1.10 Rerun checks for auxiliary files (HO)
@@ -883,18 +889,18 @@ Package: uniquecounter 2019/12/15 v1.4 Provide unlimited unique counter (HO)
 Package uniquecounter Info: New unique counter `rerunfilecheck' on input line 2
 85.
 )
-\Hy@SectionHShift=\skip70
+\Hy@SectionHShift=\skip71
 )
 Package hyperref Info: Option `colorlinks' set `true' on input line 129.
 
 (/usr/share/texlive/texmf-dist/tex/latex/titlesec/titlesec.sty
 Package: titlesec 2023/10/27 v2.16 Sectioning titles
 \ttl@box=\box93
-\beforetitleunit=\skip71
-\aftertitleunit=\skip72
+\beforetitleunit=\skip72
+\aftertitleunit=\skip73
 \ttl@plus=\dimen314
 \ttl@minus=\dimen315
-\ttl@toksa=\toks46
+\ttl@toksa=\toks47
 \titlewidth=\dimen316
 \titlewidthlast=\dimen317
 \titlewidthfirst=\dimen318
@@ -1037,7 +1043,7 @@ Package caption Info: Begin \AtBeginDocument code.
 Package caption Info: hyperref package is loaded.
 Package caption Info: listings package is loaded.
 Package caption Info: End \AtBeginDocument code.
-\c@lstlisting=\count354
+\c@lstlisting=\count355
 Package hyperref Info: Link coloring ON on input line 143.
 
 (./baocao_tongket.out) (./baocao_tongket.out)
@@ -1075,7 +1081,7 @@ File: mt-cmr.cfg 2013/05/19 v2.2 microtype config. file: Computer Modern Roman
 \openout5 = `baocao_tongket.toc'.
 
  [2]
-Underfull \hbox (badness 10000) in paragraph at lines 215--217
+Underfull \hbox (badness 10000) in paragraph at lines 217--219
 
  []
 
@@ -1083,7 +1089,7 @@ Underfull \hbox (badness 10000) in paragraph at lines 215--217
 File: figures/IPC.png Graphic file (type bmp)
 <figures/IPC.png>
 
-Overfull \hbox (2.37431pt too wide) in paragraph at lines 296--299
+Overfull \hbox (2.37431pt too wide) in paragraph at lines 298--301
 \TU/lmr/bx/n/12 buffer \TU/lmr/m/n/12 trong kernel – minh họa kinh điển của \TU
 /lmr/bx/n/12 producer-consumer problem \TU/lmr/m/n/12 (Dijkstra,
  []
@@ -1094,93 +1100,93 @@ File: figures/Pipe.png Graphic file (type bmp)
 File: figures/ProCon.png Graphic file (type bmp)
 <figures/ProCon.png>
  [6]
-Overfull \hbox (8.00363pt too wide) in paragraph at lines 335--338
+Overfull \hbox (8.00363pt too wide) in paragraph at lines 337--340
 \TU/lmr/m/n/12 Trong xv6, vấn đề này được giải quyết bằng cách sử dụng một trườ
 ng khóa là \TU/lmr/m/it/12 SPINLOCK\TU/lmr/m/n/12 . 
  []
 
 Package hyperref Info: bookmark level for unknown lstlisting defaults to 0 on i
-nput line 342.
+nput line 344.
 LaTeX Font Info:    Font shape `TU/lmtt/bx/n' in size <10> not available
-(Font)              Font shape `TU/lmtt/b/n' tried instead on input line 343.
+(Font)              Font shape `TU/lmtt/b/n' tried instead on input line 345.
 [7]
 File: figures/cirbuf.png Graphic file (type bmp)
 <figures/cirbuf.png>
  [8] [9] [10]
-Overfull \hbox (1.18364pt too wide) in paragraph at lines 505--508
+Overfull \hbox (1.18364pt too wide) in paragraph at lines 507--510
 []\TU/lmr/m/n/12 W gửi dữ liệu đến R bằng cách gọi \TU/lmtt/m/n/12 write(fd=4, 
 buf, n)\TU/lmr/m/n/12 : kernel gọi \TU/lmtt/m/n/12 pipewrite()
  []
 
 
-Overfull \hbox (41.0903pt too wide) in paragraph at lines 542--544
+Overfull \hbox (41.0903pt too wide) in paragraph at lines 544--546
 \TU/lmr/m/n/12 User process \TU/lmr/bx/n/12 không gọi trực tiếp \TU/lmtt/m/n/12
  pipewrite()\TU/lmr/m/n/12 /\TU/lmtt/m/n/12 piperead() \TU/lmr/m/n/12 mà gọi qu
 a hàm \TU/lmtt/m/n/12 write()\TU/lmr/m/n/12 /\TU/lmtt/m/n/12 read()
  []
 
 [11]
-Underfull \hbox (badness 4403) in paragraph at lines 643--643
+Underfull \hbox (badness 4403) in paragraph at lines 645--645
 \TU/lmr/m/n/8 sang kernel page table; nhảy tới
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 643--643
+Underfull \hbox (badness 10000) in paragraph at lines 645--645
 []|\TU/lmr/m/n/8 Đọc reg \TU/lmtt/m/n/8 a7 \TU/lmr/m/n/8 (SYS_write=16 /
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 643--643
+Underfull \hbox (badness 10000) in paragraph at lines 645--645
 \TU/lmr/m/n/8 SYS_read=63), dispatch bảng
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 643--643
+Underfull \hbox (badness 10000) in paragraph at lines 645--645
 []|\TU/lmr/m/n/8 Validate \TU/lmtt/m/n/8 fd $\OMS/cmsy/m/n/8 2 \OT1/cmr/m/n/8 [
 0\OML/cmm/m/it/8 ; []\OT1/cmr/m/n/8 )$\TU/lmr/m/n/8 ;
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 643--643
+Underfull \hbox (badness 10000) in paragraph at lines 645--645
 \TU/lmr/m/n/8 trả về \TU/lmtt/m/n/8 struct file* \TU/lmr/m/n/8 từ
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 643--643
+Underfull \hbox (badness 10000) in paragraph at lines 645--645
 []|\TU/lmr/m/n/8 Kiểm tra \TU/lmtt/m/n/8 f->type == FD_PIPE\TU/lmr/m/n/8 ;
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 643--643
+Underfull \hbox (badness 10000) in paragraph at lines 645--645
 []|\TU/lmtt/m/n/8 acquire(&lock)\TU/lmr/m/n/8 ; vòng lặp:
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 643--643
+Underfull \hbox (badness 10000) in paragraph at lines 645--645
 \TU/lmr/m/n/8 copyin/copyout từng byte, kiểm
  []
 
 
-Underfull \hbox (badness 2253) in paragraph at lines 643--643
+Underfull \hbox (badness 2253) in paragraph at lines 645--645
 []|\TU/lmtt/m/n/8 walkaddr() \TU/lmr/m/n/8 dịch VA$\OMS/cmsy/m/n/8 !$\TU/lmr/m/
 n/8 PA (Sv39 3-
  []
 
 
-Underfull \hbox (badness 3735) in paragraph at lines 643--643
+Underfull \hbox (badness 3735) in paragraph at lines 645--645
 []|\TU/lmr/m/n/8 Quét \TU/lmtt/m/n/8 proc[NPROC] \TU/lmr/m/n/8 (64 entry), đổi
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 643--643
+Underfull \hbox (badness 10000) in paragraph at lines 645--645
 []|\TU/lmr/m/n/8 Đặt \TU/lmtt/m/n/8 sstatus.SPP=0 \TU/lmr/m/n/8 (user mode),
  []
 
 [12]
 LaTeX Font Info:    Font shape `TU/lmtt/bx/n' in size <12> not available
-(Font)              Font shape `TU/lmtt/b/n' tried instead on input line 752.
+(Font)              Font shape `TU/lmtt/b/n' tried instead on input line 754.
  [13] [14] [15] [16] [17]
-Overfull \hbox (0.75145pt too wide) in paragraph at lines 977--978
+Overfull \hbox (0.75145pt too wide) in paragraph at lines 979--980
 []\TU/lmr/bx/n/12 CPU cache: \TU/lmr/m/n/12 Hầu hết các dòng CPU hiện đại(Intel
 , AMD, ARM) đều có cacheline
  []
@@ -1192,35 +1198,35 @@ File: lstlang1.sty 2023/02/27 1.9 listings language file
 File: lstlang1.sty 2023/02/27 1.9 listings language file
 ) [19] [20]
 [21]
-Overfull \hbox (16.47159pt too wide) in paragraph at lines 1156--1157
+Overfull \hbox (16.47159pt too wide) in paragraph at lines 1158--1159
 []\TU/lmr/m/n/12 Kiểm tra xem buffer đã đầy chưa, điều kiện \TU/lmtt/m/n/12 pi-
 >nwrite == pi->nread + PIPESIZE
  []
 
 [22]
-Overfull \hbox (0.41164pt too wide) in paragraph at lines 1223--1224
+Overfull \hbox (0.41164pt too wide) in paragraph at lines 1225--1226
 []\TU/lmr/m/n/12 Với \TU/lmtt/m/n/12 chunk_bytes \TU/lmr/m/n/12 nhỏ, số lần gọi
  syscall sẽ nhiều (số lần gọi syscall = \TU/lmtt/m/n/12 total_bytes
  []
 
 [23] [24] [25] [26] [27]
-Overfull \hbox (12.35167pt too wide) in paragraph at lines 1443--1446
+Overfull \hbox (12.35167pt too wide) in paragraph at lines 1445--1448
 \TU/lmr/m/n/12 Trong các phiên bản từ v1 đến v4, cuối mỗi lần \TU/lmtt/m/n/12 p
 ipewrite() \TU/lmr/m/n/12 đều gọi \TU/lmtt/m/n/12 wakeup(&pi->nread)
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 1461--1464
+Underfull \hbox (badness 10000) in paragraph at lines 1463--1466
 
  []
 
 [28]
-Underfull \hbox (badness 10000) in paragraph at lines 1494--1495
+Underfull \hbox (badness 10000) in paragraph at lines 1496--1497
 
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 1496--1498
+Underfull \hbox (badness 10000) in paragraph at lines 1498--1500
 
  []
 
@@ -1228,35 +1234,35 @@ Underfull \hbox (badness 10000) in paragraph at lines 1496--1498
 File: figures/processstate.png Graphic file (type bmp)
 <figures/processstate.png>
 
-Underfull \hbox (badness 10000) in paragraph at lines 1600--1609
+Underfull \hbox (badness 10000) in paragraph at lines 1602--1611
 
  []
 
 [31]
-Underfull \hbox (badness 10000) in paragraph at lines 1624--1627
+Underfull \hbox (badness 10000) in paragraph at lines 1626--1629
 
  []
 
 File: figures/multilevelfeedback.png Graphic file (type bmp)
 <figures/multilevelfeedback.png>
 
-Overfull \hbox (2.42094pt too wide) in paragraph at lines 1629--1636
+Overfull \hbox (2.42094pt too wide) in paragraph at lines 1631--1638
 \TU/lmr/m/n/12 Do đó, để tăng băng thông, thay vì để reader/writer phải chờ đượ
 c quét trong scheduler()
  []
 
 [32]
-Underfull \hbox (badness 10000) in paragraph at lines 1637--1639
+Underfull \hbox (badness 10000) in paragraph at lines 1639--1641
 
  []
 
 [33] [34]
-Underfull \hbox (badness 10000) in paragraph at lines 1726--1730
+Underfull \hbox (badness 10000) in paragraph at lines 1728--1732
 
  []
 
 [35] [36] [37] [38] [39] [40] [41] [42] [43]
-Overfull \hbox (14.1582pt too wide) in paragraph at lines 2166--2170
+Overfull \hbox (14.1582pt too wide) in paragraph at lines 2168--2172
 []\TU/lmr/bx/n/12 Kernel space vs User space: \TU/lmr/m/n/12 Triển khai tối ưu 
 ở kernel space (sửa \TU/lmtt/m/n/12 kernel/pipe.c\TU/lmr/m/n/12 ,
  []
@@ -1266,26 +1272,16 @@ Overfull \hbox (14.1582pt too wide) in paragraph at lines 2166--2170
 LaTeX2e <2023-11-01> patch level 1
 L3 programming layer <2024-01-22>
  ***********
-
-
-LaTeX Warning: Label(s) may have changed. Rerun to get cross-references right.
-
-
-Package rerunfilecheck Warning: File `baocao_tongket.out' has changed.
-(rerunfilecheck)                Rerun to get outlines right
-(rerunfilecheck)                or use package `bookmark'.
-
-Package rerunfilecheck Info: Checksums for `baocao_tongket.out':
-(rerunfilecheck)             Before: 5218E289795BFCBECA8B48A7353CD84F;10220
-(rerunfilecheck)             After:  41BB3C773DC9765840A96FFAD4E7E82F;9901.
+Package rerunfilecheck Info: File `baocao_tongket.out' has not changed.
+(rerunfilecheck)             Checksum: 41BB3C773DC9765840A96FFAD4E7E82F;9901.
  ) 
 Here is how much of TeX's memory you used:
- 33811 strings out of 474878
- 697302 string characters out of 5762516
+ 33899 strings out of 474878
+ 698590 string characters out of 5762516
  2349627 words of memory out of 5000000
- 55299 multiletter control sequences out of 15000+600000
+ 55383 multiletter control sequences out of 15000+600000
  568244 words of font info for 99 fonts, out of 8000000 for 9000
  1348 hyphenation exceptions out of 8191
- 84i,15n,93p,1011b,1827s stack positions out of 10000i,1000n,20000p,200000b,200000s
+ 84i,16n,93p,1011b,1827s stack positions out of 10000i,1000n,20000p,200000b,200000s
 
 Output written on baocao_tongket.pdf (46 pages).

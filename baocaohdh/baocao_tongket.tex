@@ -49,7 +49,7 @@
 
 %% Code listings
 \usepackage{listings}
-\usepackage{xcolor}
+\usepackage[table]{xcolor}
 
 \definecolor{codegray}{rgb}{0.5,0.5,0.5}
 \definecolor{codepurple}{rgb}{0.58,0,0.82}
@@ -161,13 +161,13 @@
 
 \vfill
 
-\begin{tabular}{@{}ll}
-\textbf{Sinh viên:}              & Nguyễn Sỹ Tuấn \hspace{1.5cm} 20224191 \\
-                                 & Lê Huy Sơn \\
-                                 & Vũ Tiến Long \\[0.8em]
-\textbf{Lớp}                    & 169227 \\[0.5em]
-\textbf{Giảng viên hướng dẫn:} &  \\
-\textbf{Học phần}               & Hệ điều hành
+\begin{tabular}{@{}lp{4.5cm}l}
+\textbf{Sinh viên:}             & Nguyễn Sỹ Tuấn  & 20224191 \\
+                                & Lê Huy Sơn      & 20224128 \\
+                                & Vũ Tiến Long    & 20224046 \\[0.8em]
+\textbf{Lớp:}                  & 169227           & \\[0.3em]
+\textbf{Giảng viên hướng dẫn:} & Phạm Văn Tiến   & \\[0.3em]
+\textbf{Học phần:}             & Hệ điều hành     &
 \end{tabular}
 
 \vspace{1.2cm}
@@ -185,30 +185,32 @@
 \addcontentsline{toc}{section}{Phân công công việc \& Đóng góp}
 % ===========================================================================
 
-\renewcommand{\arraystretch}{1.4}
-\begin{tabularx}{\textwidth}{|c|p{3.8cm}|X|c|}
+\renewcommand{\arraystretch}{1.35}
+\begin{tabularx}{\textwidth}{|c|p{3.6cm}|X|c|}
 \hline
+\rowcolor{gray!18}
 \textbf{STT} & \textbf{Thành viên} & \textbf{Nội dung công việc} & \textbf{Tiến độ} \\
 \hline
-1  & \multirow{4}{*}{\centering\textbf{Nguyễn Sỹ Tuấn}} & v2 -- Bulk Copy                                              & 11\% \\
+1  & \multirow{3}{*}{\shortstack[c]{\textbf{Nguyễn Sỹ Tuấn}\\[2pt]{\small 20224191}}}
+   & v2 -- Bulk Copy                                         & 15\% \\
 \cline{1-1}\cline{3-4}
-2  & & v4 -- Multi-page Allocation                                                    & 15\% \\
+2  & & v4 -- Multi-page Allocation                            & 15\% \\
 \cline{1-1}\cline{3-4}
-3  & & v8 -- All Combined (tích hợp, kiểm thử toàn bộ)                               & 15\% \\
-\cline{1-1}\cline{3-4}
-4  & & Phân tích baseline v1, viết \texttt{pipebench.c} và báo cáo                   &  4\% \\
+4  & & Phân tích baseline v1, viết \texttt{pipebench.c} và báo cáo &  4\% \\
 \hline
-5  & \multirow{3}{*}{\centering\textbf{Lê Huy Sơn}} & v3 -- Ring of Buffers                  & 15\% \\
+5  & \multirow{3}{*}{\shortstack[c]{\textbf{Lê Huy Sơn}\\[2pt]{\small 20224128}}}
+   & v3 -- Ring of Buffers                                   & 15\% \\
 \cline{1-1}\cline{3-4}
-6  & & v6 -- Priority Boost                                                           & 15\% \\
+6  & & v6 -- Priority Boost                                   & 15\% \\
 \cline{1-1}\cline{3-4}
-7  & & v8 -- All Combined (tích hợp v3, v6)                                          & 13\% \\
+7  & & v8 -- All Combined (tích hợp v3, v6)                  & 3\% \\
 \hline
-8  & \multirow{3}{*}{\centering\textbf{Vũ Tiến Long}} & v5 -- Lazy Wakeup                     & 15\% \\
+8  & \multirow{3}{*}{\shortstack[c]{\textbf{Vũ Tiến Long}\\[2pt]{\small 20224046}}}
+   & v5 -- Lazy Wakeup                                       & 15\% \\
 \cline{1-1}\cline{3-4}
-9  & & v7 -- Cache-line Alignment                                                     & 15\% \\
+9  & & v7 -- Cache-line Alignment                             & 15\% \\
 \cline{1-1}\cline{3-4}
-10 & & v8 -- All Combined (tích hợp v5, v7)                                          & 3\% \\
+10 & & v8 -- All Combined (tích hợp v5, v7)                  &  3\% \\
 \hline
 \multicolumn{3}{|c|}{\textbf{Tổng}} & \textbf{100\%} \\
 \hline
