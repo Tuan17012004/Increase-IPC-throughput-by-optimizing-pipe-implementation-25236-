@@ -1,0 +1,7 @@
+# xaxis=chunk_bytes total_bytes=4194304
+# Paste here the output you get from `pipebench` + `cat ipctp.txt`
+# inside xv6 BEFORE applying the bulk-copy optimization.
+# Format: <chunk_bytes> <bytes_per_second>
+# Example:
+# 64 350000
+# 128 720000
