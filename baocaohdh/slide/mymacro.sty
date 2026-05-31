@@ -1,0 +1,73 @@
+\usepackage{tikz}
+\usepackage{pgfpages}
+
+\usetikzlibrary{positioning}
+\usetikzlibrary{fit}
+
+% --- Highlight: \highlight[color]{expr} ---
+\newcommand<>{\highlight}[2][red]{%
+    \alt#3{%
+        \tikz[baseline=(x.base)]{
+            \node[rectangle,rounded corners,fill=#1!15](x){$#2$};
+        }%
+    }{%
+        #2
+    }%
+}
+
+% --- Highlight with caption below: \highlightcap<overlay>[color]{expr}{caption} ---
+\newcommand<>{\highlightcap}[3][red]{%
+    \alt#4{%
+        \tikz[baseline=(x.base)]{
+            \node[rectangle,rounded corners,fill=#1!15](x){$#2$};
+            \node[anchor=north, color=#1, align=center] at (x.south) {\scriptsize#3};
+        }%
+    }{%
+        $#2$
+    }%
+}
+
+\newcommand<>{\highlightcapoverlay}[3][red]{%
+    \alt#4{%
+        \tikz[baseline=(x.base)]{
+            \node[rectangle,rounded corners,fill=#1!15](x){$#2$};
+            \node[anchor=north, color=#1, align=center, overlay] (y) at (x.south) {\scriptsize#3};
+            \node[anchor=north, color=#1, align=center, inner ysep=7.5pt,
+                  fit={(y.south)(y.north)}] at (x.south) {};
+        }%
+    }{%
+        $#2$
+    }%
+}
+
+\newcommand<>{\highlightcaphead}[3][red]{%
+    \alt#4{%
+        \tikz[baseline=(x.base)]{
+            \node[rectangle,rounded corners,fill=#1!15](x){$#2$};
+            \node[anchor=south, color=#1, align=center] at (x.north) {\scriptsize#3};
+        }%
+    }{%
+        $#2$
+    }%
+}
+
+% --- Remark box (gray shaded block) ---
+\newcommand{\remarkbox}[2][gray]{%
+    \tikz[baseline=(x.base)]{
+        \node[rectangle,rounded corners,fill=#1!20] (x) {%
+            \begin{minipage}[c]{0.9\hsize}#2\end{minipage}%
+        };
+    }%
+}
+
+% --- Bracket shortcuts ---
+\newcommand{\nbracket}[1]{\left( #1 \right)}
+\newcommand{\cbracket}[1]{\left\{ #1 \right\}}
+\newcommand{\rbracket}[1]{\left[ #1 \right]}
+\newcommand{\abracket}[1]{\left\langle #1 \right\rangle}
+
+\newcommand{\boldsf}[1]{\boldsymbol{\mathsf{#1}}}
+
+\DeclareMathOperator{\tr}{tr}
+\DeclareMathOperator*{\argmax}{argmax}
+\DeclareMathOperator*{\argmin}{argmin}

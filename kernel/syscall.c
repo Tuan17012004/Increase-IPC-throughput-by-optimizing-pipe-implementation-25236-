@@ -6,6 +6,9 @@
 #include "proc.h"
 #include "syscall.h"
 #include "defs.h"
+#include "sleeplock.h"
+#include "fs.h"
+#include "file.h"
 
 // Fetch the uint64 at addr from the current process.
 int
@@ -135,6 +138,16 @@ syscall(void)
   struct proc *p = myproc();
 
   num = p->trapframe->a7;
+#if PIPE_TRACE
+  if((num == SYS_write || num == SYS_read) && strncmp(p->name, "ptdemo", 6) == 0){
+    int _fd = (int)p->trapframe->a0;
+    int _is_pipe = (_fd >= 0 && _fd < NOFILE &&
+                    p->ofile[_fd] && p->ofile[_fd]->type == FD_PIPE);
+    if(_is_pipe)
+      printf("[TRACE %c2] syscall()     : SYS_%s (num=%d) pid=%d -> dispatch\n",
+             num==SYS_write?'W':'R', num==SYS_write?"write":"read", num, p->pid);
+  }
+#endif
   if(num > 0 && num < NELEM(syscalls) && syscalls[num]) {
     // Use num to lookup the system call function for num, call it,
     // and store its return value in p->trapframe->a0

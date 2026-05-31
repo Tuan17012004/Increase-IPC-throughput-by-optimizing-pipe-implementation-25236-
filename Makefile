@@ -61,7 +61,24 @@ LD = $(TOOLPREFIX)ld
 OBJCOPY = $(TOOLPREFIX)objcopy
 OBJDUMP = $(TOOLPREFIX)objdump
 
+# PIPE_VERSION selects which pipe optimization mechanism is compiled in.
+#   1 = original xv6 (byte-by-byte, 512B)
+#   2 = bulk copy
+#   3 = ring of buffers (4 * 512B)
+#   4 = multi-page (4096B flat)
+#   5 = lazy wakeup
+#   6 = priority boost (scheduler change)
+#   7 = cache-line aligned struct
+# Override with: make PIPE_VERSION=3
+ifndef PIPE_VERSION
+PIPE_VERSION = 7
+endif
+
 CFLAGS = -Wall -Werror -Wno-unknown-attributes -O -fno-omit-frame-pointer -ggdb -gdwarf-2
+CFLAGS += -DPIPE_VERSION=$(PIPE_VERSION)
+ifdef PIPE_TRACE
+CFLAGS += -DPIPE_TRACE=$(PIPE_TRACE)
+endif
 CFLAGS += -march=rv64gc
 CFLAGS += -MD
 CFLAGS += -mcmodel=medany
@@ -145,6 +162,19 @@ UPROGS=\
 	$U/_logstress\
 	$U/_forphan\
 	$U/_dorphan\
+	$U/_pipeexample\
+	$U/_pipetest\
+	$U/_pipebench\
+	$U/_pipeoverhead\
+	$U/_plotchart\
+	$U/_pipe_wc\
+	$U/_pipe_chain\
+	$U/_pipe_fanout\
+	$U/_pipe_pingpong\
+	$U/_pipe_live\
+	$U/_pipe_demo\
+	$U/_ptdemo\
+	$U/_pccycle\
 
 fs.img: mkfs/mkfs README $(UPROGS)
 	mkfs/mkfs fs.img README $(UPROGS)
@@ -166,7 +196,7 @@ QEMUGDB = $(shell if $(QEMU) -help | grep -q '^-gdb'; \
 	then echo "-gdb tcp::$(GDBPORT)"; \
 	else echo "-s -p $(GDBPORT)"; fi)
 ifndef CPUS
-CPUS := 3
+CPUS := 1
 endif
 
 QEMUOPTS = -machine virt -bios none -kernel $K/kernel -m 128M -smp $(CPUS) -nographic

@@ -1,3 +1,5 @@
+#ifndef _RISCV_H_
+#define _RISCV_H_
 #ifndef __ASSEMBLER__
 
 // which hart (core) is this?
@@ -273,6 +275,14 @@ r_mcounteren()
   return x;
 }
 
+// Supervisor-mode Counter-Enable (controls user-mode access to counters)
+// Bit 0 (CY): allow U-mode to read 'cycle' CSR via rdcycle
+static inline void
+w_scounteren(uint64 x)
+{
+  asm volatile("csrw scounteren, %0" : : "r" (x));
+}
+
 // machine-mode cycle counter
 static inline uint64
 r_time()
@@ -378,3 +388,4 @@ typedef uint64 *pagetable_t; // 512 PTEs
 // Sv39, to avoid having to sign-extend virtual addresses
 // that have the high bit set.
 #define MAXVA (1L << (9 + 9 + 9 + 12 - 1))
+#endif

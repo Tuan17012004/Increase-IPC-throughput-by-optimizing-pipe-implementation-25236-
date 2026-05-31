@@ -125,6 +125,11 @@ found:
   p->pid = allocpid();
   p->state = USED;
 
+  // ---- Cơ chế 11: khởi tạo priority = BASE ----
+  // Trường priority luôn tồn tại trong struct proc, nhưng chỉ ĐƯỢC DÙNG
+  // bởi scheduler/wakeup khi PIPE_VERSION >= 6.
+  p->priority = PRIORITY_BASE;
+
   // Allocate a trapframe page.
   if((p->trapframe = (struct trapframe *)kalloc()) == 0){
     freeproc(p);
@@ -168,6 +173,7 @@ freeproc(struct proc *p)
   p->chan = 0;
   p->killed = 0;
   p->xstate = 0;
+  p->priority = PRIORITY_BASE;  // Cơ chế 11: reset priority khi free
   p->state = UNUSED;
 }
 
@@ -414,13 +420,48 @@ kwait(uint64 addr)
   }
 }
 
-// Per-CPU process scheduler.
-// Each CPU calls scheduler() after setting itself up.
-// Scheduler never returns.  It loops, doing:
-//  - choose a process to run.
-//  - swtch to start running that process.
-//  - eventually that process transfers control
-//    via swtch back to the scheduler.
+// ============================================================================
+//  scheduler() — Cơ chế 11: Priority-Based Scheduling
+// ============================================================================
+//
+//  TRƯỚC (xv6 gốc — Round-Robin):
+//    Scheduler quét tuần tự proc[0..63], chọn process RUNNABLE ĐẦU TIÊN:
+//
+//      for(p = proc; p < &proc[NPROC]; p++) {
+//        if(p->state == RUNNABLE) {
+//          p->state = RUNNING;   // ← chạy luôn, không so sánh
+//          swtch(...);
+//        }
+//      }
+//
+//    Vấn đề: nếu reader pipe ở proc[60] và process shell ở proc[2],
+//    shell sẽ LUÔN được chạy trước reader → reader bị trì hoãn
+//    → writer sleep lâu → throughput giảm.
+//
+//  SAU (v6 — Priority Boost):
+//    Scheduler quét TOÀN BỘ proc[], tìm process RUNNABLE có priority
+//    CAO NHẤT, rồi mới chạy process đó.
+//
+//    THUẬT TOÁN:
+//      1. best = NULL, best_priority = -1
+//      2. for(p in proc[0..63]):
+//           if p.state == RUNNABLE && p.priority > best_priority:
+//             best = p
+//             best_priority = p.priority
+//      3. if best != NULL: swtch(best)
+//
+//    Nếu nhiều process có CÙNG priority (ví dụ tất cả = 0):
+//      → chọn process ĐẦU TIÊN tìm thấy (giống round-robin cũ)
+//      → backward-compatible!
+//
+//  CHI PHÍ:
+//    Round-robin: tìm thấy 1 RUNNABLE → dừng ngay (tối ưu nếu ít process)
+//    Priority:    LUÔN quét hết 64 entry để tìm max
+//    → Thêm ~64 lần kiểm tra mỗi vòng scheduler.
+//    Nhưng: scheduler loop chạy trong kernel, 64 compare rất nhanh (~vài μs).
+//    Lợi ích: giảm latency pipe IPC từ O(NPROC ticks) xuống O(1 tick).
+//
+// ============================================================================
 void
 scheduler(void)
 {
@@ -429,36 +470,73 @@ scheduler(void)
 
   c->proc = 0;
   for(;;){
-    // The most recent process to run may have had interrupts
-    // turned off; enable them to avoid a deadlock if all
-    // processes are waiting. Then turn them back off
-    // to avoid a possible race between an interrupt
-    // and wfi.
+    // Enable interrupts briefly to avoid deadlock when all processes sleep.
     intr_on();
     intr_off();
 
+#if PIPE_VERSION >= 6
+    // ---- PHASE 1: Tìm process RUNNABLE có priority cao nhất ----
+    //
+    // Quét toàn bộ proc[]. Với mỗi RUNNABLE process, so sánh priority.
+    // Giữ lại process có priority cao nhất.
+    //
+    // LƯU Ý LOCK:
+    //   Chúng ta KHÔNG giữ lock khi quét tìm best (chỉ đọc state + priority).
+    //   Điều này an toàn vì:
+    //     a) state và priority chỉ thay đổi dưới p->lock
+    //     b) Nếu process thay đổi state sau khi ta đọc → ta sẽ thử acquire
+    //        lock và kiểm tra lại ở phase 2 (double-check)
+    //     c) Worst case: miss một RUNNABLE process → sẽ bắt ở vòng sau
+    struct proc *best = 0;
+    int best_priority = -1;
+
+    for(p = proc; p < &proc[NPROC]; p++) {
+      // Đọc state KHÔNG cần lock (optimization: tránh 64 acquire/release).
+      // Có thể đọc stale value nhưng vô hại (xem lưu ý ở trên).
+      if(p->state == RUNNABLE && p->priority > best_priority) {
+        best = p;
+        best_priority = p->priority;
+      }
+    }
+
+    // ---- PHASE 2: Chạy process đã chọn (double-check dưới lock) ----
+    //
+    // Acquire lock và KIỂM TRA LẠI state vì có thể process đã bị
+    // thay đổi giữa phase 1 và phase 2 (race condition an toàn).
+    if(best) {
+      acquire(&best->lock);
+      if(best->state == RUNNABLE) {
+        best->state = RUNNING;
+        c->proc = best;
+        swtch(&c->context, &best->context);
+
+        // Process đã yield/sleep/exit — trở về scheduler.
+        c->proc = 0;
+      }
+      release(&best->lock);
+    } else {
+      // Không có process nào RUNNABLE → chờ interrupt.
+      asm volatile("wfi");
+    }
+#else
+    // ---- ROUND-ROBIN gốc của xv6 (cho v1..v5) ----
+    // Quét tuần tự, chọn RUNNABLE đầu tiên tìm thấy. Không dùng priority.
     int found = 0;
     for(p = proc; p < &proc[NPROC]; p++) {
       acquire(&p->lock);
       if(p->state == RUNNABLE) {
-        // Switch to chosen process.  It is the process's job
-        // to release its lock and then reacquire it
-        // before jumping back to us.
         p->state = RUNNING;
         c->proc = p;
         swtch(&c->context, &p->context);
-
-        // Process is done running for now.
-        // It should have changed its p->state before coming back.
         c->proc = 0;
         found = 1;
       }
       release(&p->lock);
     }
     if(found == 0) {
-      // nothing to run; stop running on this core until an interrupt.
       asm volatile("wfi");
     }
+#endif
   }
 }
 
@@ -489,12 +567,51 @@ sched(void)
   mycpu()->intena = intena;
 }
 
-// Give up the CPU for one scheduling round.
+// ============================================================================
+//  yield() — Nhường CPU + Priority Decay (Cơ chế 11)
+// ============================================================================
+//
+//  TRƯỚC (xv6 gốc):
+//    Chỉ đặt state = RUNNABLE rồi sched().
+//
+//  SAU (v6 — Priority Boost):
+//    Trước khi yield, GIẢM priority đi 1 nếu priority > PRIORITY_BASE.
+//
+//  TẠI SAO DECAY Ở ĐÂY?
+//    yield() được gọi bởi timer interrupt handler (trap.c, dòng 85):
+//      if(which_dev == 2)   // timer interrupt
+//        yield();
+//
+//    Timer interrupt xảy ra mỗi tick (~100ms). Vậy mỗi tick, process
+//    đang chạy sẽ bị giảm priority 1 đơn vị.
+//
+//    Ví dụ (reader vừa được wakeup với priority = PRIORITY_BOOST = 10):
+//      tick 0: reader chạy, yield() → priority 10 → 9
+//      tick 1: reader chạy, yield() → priority 9 → 8
+//      ...
+//      tick 10: reader chạy, yield() → priority 1 → 0 (BASE)
+//      tick 11+: reader chạy, priority = 0 (KHÔNG giảm thêm)
+//
+//    → Priority boost chỉ hiệu quả trong ~10 tick (~1 giây).
+//    → Sau đó process trở về priority bình thường,
+//       scheduler lại hoạt động gần giống round-robin.
+//    → TRÁNH STARVATION: process có priority boost không thể
+//       chiếm CPU vĩnh viễn vì priority tự giảm dần.
+//
+// ============================================================================
 void
 yield(void)
 {
   struct proc *p = myproc();
   acquire(&p->lock);
+
+#if PIPE_VERSION >= 6
+  // ---- Cơ chế 11: Priority Decay ----
+  // Giảm priority mỗi tick để process không chiếm CPU mãi.
+  if(p->priority > PRIORITY_BASE)
+    p->priority--;
+#endif
+
   p->state = RUNNABLE;
   sched();
   release(&p->lock);
@@ -568,8 +685,59 @@ sleep(void *chan, struct spinlock *lk)
   acquire(lk);
 }
 
-// Wake up all processes sleeping on channel chan.
-// Caller should hold the condition lock.
+// ============================================================================
+//  wakeup() — Đánh thức + Priority Boost (Cơ chế 11)
+// ============================================================================
+//
+//  TRƯỚC (xv6 gốc):
+//    void wakeup(void *chan) {
+//      for(p in proc[0..63]) {
+//        acquire(&p->lock);
+//        if(p->state == SLEEPING && p->chan == chan)
+//          p->state = RUNNABLE;              // ← chỉ đổi state
+//        release(&p->lock);
+//      }
+//    }
+//    → Process tỉnh dậy nhưng priority = 0 (BASE)
+//    → Scheduler có thể chọn process khác trước!
+//
+//  SAU (v6 — Priority Boost):
+//    void wakeup(void *chan) {
+//      ...
+//      if(p->state == SLEEPING && p->chan == chan) {
+//        p->state = RUNNABLE;
+//        p->priority = PRIORITY_BOOST;       // ← BOOST priority!
+//      }
+//      ...
+//    }
+//    → Process tỉnh dậy với priority = 10 (BOOST)
+//    → Scheduler sẽ chọn process này TRƯỚC process có priority thấp hơn!
+//
+//  TÁC DỤNG CHO PIPE IPC:
+//    pipewrite() gọi wakeup(&pi->nread) khi ghi xong:
+//      → reader.priority = PRIORITY_BOOST
+//      → Scheduler chọn reader ngay tick kế tiếp
+//      → Reader đọc xong, gọi wakeup(&pi->nwrite):
+//          → writer.priority = PRIORITY_BOOST
+//          → Scheduler chọn writer ngay tick kế tiếp
+//      → Pipeline chạy liên tục, ping-pong tối ưu!
+//
+//  VÍ DỤ TRƯỚC/SAU:
+//    Hệ thống có: [init(pri=0), sh(pri=0), reader(pri=0), writer(pri=0)]
+//
+//    TRƯỚC (round-robin):
+//      Writer wakeup(reader): reader.state = RUNNABLE, priority = 0
+//      Scheduler: init? → skip (sleeping)
+//                 sh? → RUNNABLE, priority = 0 → CHỌN sh!
+//                 reader phải chờ sh chạy xong tick
+//
+//    SAU (priority boost):
+//      Writer wakeup(reader): reader.state = RUNNABLE, priority = 10
+//      Scheduler: init? pri=0
+//                 sh?   pri=0
+//                 reader? pri=10 → CHỌN reader! (cao nhất)
+//
+// ============================================================================
 void
 wakeup(void *chan)
 {
@@ -580,6 +748,10 @@ wakeup(void *chan)
       acquire(&p->lock);
       if(p->state == SLEEPING && p->chan == chan) {
         p->state = RUNNABLE;
+#if PIPE_VERSION >= 6
+        // ---- Cơ chế 11: BOOST priority (chỉ v6+) ----
+        p->priority = PRIORITY_BOOST;
+#endif
       }
       release(&p->lock);
     }
@@ -666,12 +838,12 @@ void
 procdump(void)
 {
   static char *states[] = {
-  [UNUSED]    "unused",
-  [USED]      "used",
-  [SLEEPING]  "sleep ",
-  [RUNNABLE]  "runble",
-  [RUNNING]   "run   ",
-  [ZOMBIE]    "zombie"
+  [UNUSED]   = "unused",
+  [USED]     = "used",
+  [SLEEPING] = "sleep ",
+  [RUNNABLE] = "runble",
+  [RUNNING]  = "run   ",
+  [ZOMBIE]   = "zombie"
   };
   struct proc *p;
   char *state;

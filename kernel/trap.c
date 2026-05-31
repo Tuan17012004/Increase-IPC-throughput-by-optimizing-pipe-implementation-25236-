@@ -5,6 +5,9 @@
 #include "spinlock.h"
 #include "proc.h"
 #include "defs.h"
+#include "sleeplock.h"
+#include "fs.h"
+#include "file.h"
 
 struct spinlock tickslock;
 uint ticks;
@@ -27,6 +30,8 @@ void
 trapinithart(void)
 {
   w_stvec((uint64)kernelvec);
+  // allow user-mode to read the 'cycle' CSR (bit 0 = CY).
+  w_scounteren(1);
 }
 
 //
@@ -56,6 +61,16 @@ usertrap(void)
 
     if(killed(p))
       kexit(-1);
+
+#if PIPE_TRACE
+    { int _snum = (int)p->trapframe->a7;
+      int _fd   = (int)p->trapframe->a0;
+      int _is_pipe = (_fd >= 0 && _fd < NOFILE &&
+                      p->ofile[_fd] && p->ofile[_fd]->type == FD_PIPE);
+      if((_snum == 16 || _snum == 5) && strncmp(p->name, "ptdemo", 6) == 0 && _is_pipe)
+        printf("[TRACE %c1] usertrap()    : scause=8 (ecall) pid=%d epc=0x%lx syscall#=%d (%s)\n",
+               _snum==16?'W':'R', p->pid, p->trapframe->epc, _snum, _snum==16?"write":"read"); }
+#endif
 
     // sepc points to the ecall instruction,
     // but we want to return to the next instruction.
@@ -100,6 +115,15 @@ void
 prepare_return(void)
 {
   struct proc *p = myproc();
+#if PIPE_TRACE
+  extern int pipe_trace_active;
+  if(pipe_trace_active){
+    printf("[TRACE %c7] prepare_return: sstatus.SPP<-0  sepc<-0x%lx  stvec<-trampoline\n",
+           (char)pipe_trace_active, p->trapframe->epc);
+    printf("[TRACE   ]                 sret -> user mode\n");
+    pipe_trace_active = 0;
+  }
+#endif
 
   // we're about to switch the destination of traps from
   // kerneltrap() to usertrap(). because a trap from kernel

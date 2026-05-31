@@ -76,6 +76,13 @@ sys_read(void)
   argint(2, &n);
   if(argfd(0, 0, &f) < 0)
     return -1;
+#if PIPE_TRACE
+  if(f->type == FD_PIPE){
+    int _fd = (int)myproc()->trapframe->a0;
+    printf("[TRACE R3] sys_read()    : fd=%d  addr=0x%lx  n=%d\n", _fd, p, n);
+    printf("[TRACE R4] argfd()       : fd=%d -> file* type=FD_PIPE -> fileread()\n", _fd);
+  }
+#endif
   return fileread(f, p, n);
 }
 
@@ -85,12 +92,18 @@ sys_write(void)
   struct file *f;
   int n;
   uint64 p;
-  
+
   argaddr(1, &p);
   argint(2, &n);
   if(argfd(0, 0, &f) < 0)
     return -1;
-
+#if PIPE_TRACE
+  if(f->type == FD_PIPE){
+    int _fd = (int)myproc()->trapframe->a0;
+    printf("[TRACE W3] sys_write()   : fd=%d  addr=0x%lx  n=%d\n", _fd, p, n);
+    printf("[TRACE W4] argfd()       : fd=%d -> file* type=FD_PIPE -> filewrite()\n", _fd);
+  }
+#endif
   return filewrite(f, p, n);
 }
 

@@ -112,6 +112,9 @@ fileread(struct file *f, uint64 addr, int n)
     return -1;
 
   if(f->type == FD_PIPE){
+#if PIPE_TRACE
+    printf("[TRACE R5] fileread()    : FD_PIPE n=%d -> piperead()\n", n);
+#endif
     r = piperead(f->pipe, addr, n);
   } else if(f->type == FD_DEVICE){
     if(f->major < 0 || f->major >= NDEV || !devsw[f->major].read)
@@ -140,6 +143,9 @@ filewrite(struct file *f, uint64 addr, int n)
     return -1;
 
   if(f->type == FD_PIPE){
+#if PIPE_TRACE
+    printf("[TRACE W5] filewrite()   : FD_PIPE n=%d -> pipewrite()\n", n);
+#endif
     ret = pipewrite(f->pipe, addr, n);
   } else if(f->type == FD_DEVICE){
     if(f->major < 0 || f->major >= NDEV || !devsw[f->major].write)
