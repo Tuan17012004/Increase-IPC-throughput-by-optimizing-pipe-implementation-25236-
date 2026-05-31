@@ -1,0 +1,23 @@
+\frametitle{v7 -- Cache-line Alignment}
+\textbf{Giải quyết vấn đề:}
+    \begin{itemize}
+        \item \texttt{nwrite} và \texttt{nread} cùng cache line 64 B → false sharing trên multi-core: Core 0 ghi \texttt{nwrite} làm cache line của Core 1 invalid → stall
+    \end{itemize}
+
+    \vspace{0.4em}
+    \textbf{Cách giải quyết:}
+    \begin{itemize}
+        \item Thêm padding để \texttt{nwrite} và \texttt{nread} nằm trên 2 cache line riêng biệt
+    \end{itemize}
+
+    \vspace{0.4em}
+    \textbf{Source code thay đổi:}
+\begin{lstlisting}
+struct pipe {
+  struct spinlock lock; char *data; uint nwrite;
+  char _pad_w[28];   // cache line 0 (byte 0-63): writer-side
+  uint nread;
+  char _pad_r[52];   // cache line 1 (byte 64-127): reader-side
+  int readopen; int writeopen;
+};
+\end{lstlisting}

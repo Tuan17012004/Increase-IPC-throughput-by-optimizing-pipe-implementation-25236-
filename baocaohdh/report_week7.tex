@@ -1,0 +1,887 @@
+% =====================================================================
+%  Progress Report -- Week 7
+%  Optimize pipe implementation to improve IPC throughput (xv6-riscv)
+%
+%  Compile with:  xelatex report_week7.tex
+%  Requires fonts: DejaVu Serif / DejaVu Sans Mono (Vietnamese + box chars)
+% =====================================================================
+\documentclass[11pt,a4paper]{article}
+
+% ----- Engine & language -----
+\usepackage{fontspec}
+\setmainfont{DejaVu Serif}
+\setsansfont{DejaVu Sans}
+\setmonofont{DejaVu Sans Mono}[Scale=0.82]
+
+% ----- Layout -----
+\usepackage[a4paper,margin=2.2cm]{geometry}
+\usepackage{parskip}
+\usepackage{microtype}
+\usepackage{titlesec}
+\titleformat{\section}{\large\bfseries}{\thesection}{1em}{}[\titlerule]
+\titleformat{\subsection}{\normalsize\bfseries}{\thesubsection}{1em}{}
+\titleformat{\subsubsection}{\normalsize\itshape}{\thesubsubsection}{1em}{}
+
+% ----- Tables, lists, math -----
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{array}
+\usepackage{enumitem}
+\setlist{itemsep=2pt, topsep=4pt}
+\usepackage{amsmath}
+\usepackage{float}
+\usepackage{caption}
+
+% ----- Code & verbatim -----
+\usepackage{listings}
+\usepackage{xcolor}
+\definecolor{codebg}{RGB}{246,246,246}
+\definecolor{codekw}{RGB}{30,90,180}
+\definecolor{codecm}{RGB}{120,120,120}
+\definecolor{codestr}{RGB}{0,128,0}
+\lstdefinestyle{cstyle}{
+  basicstyle=\ttfamily\footnotesize,
+  backgroundcolor=\color{codebg},
+  keywordstyle=\color{codekw}\bfseries,
+  commentstyle=\color{codecm}\itshape,
+  stringstyle=\color{codestr},
+  numbers=none,
+  frame=single,
+  rulecolor=\color{black!20},
+  breaklines=true,
+  showstringspaces=false,
+  language=C,
+  literate={->}{{$\rightarrow$}}2 {<-}{{$\leftarrow$}}2
+           {~}{{$\sim$}}1 {*}{{*}}1
+}
+\lstset{style=cstyle}
+
+% Plain ASCII / diagram listing (no syntax highlighting)
+\lstdefinestyle{plain}{
+  basicstyle=\ttfamily\footnotesize,
+  backgroundcolor=\color{codebg},
+  keywords={},
+  language={},
+  numbers=none,
+  frame=single,
+  rulecolor=\color{black!20},
+  breaklines=false,
+  showstringspaces=false,
+  upquote=true,
+}
+
+% ----- Callout boxes -----
+\usepackage{mdframed}
+\newmdenv[
+  linecolor=blue!55, linewidth=2pt,
+  topline=false, bottomline=false, rightline=false,
+  innerleftmargin=10pt, innerrightmargin=8pt,
+  innertopmargin=6pt, innerbottommargin=6pt,
+  backgroundcolor=blue!3
+]{callout}
+
+\newmdenv[
+  linecolor=orange!75, linewidth=2pt,
+  topline=false, bottomline=false, rightline=false,
+  innerleftmargin=10pt, innerrightmargin=8pt,
+  innertopmargin=6pt, innerbottommargin=6pt,
+  backgroundcolor=orange!4
+]{warnbox}
+
+% ----- Hyperref last -----
+\usepackage[hidelinks]{hyperref}
+
+% ----- Title -----
+\title{\textbf{Progress Report -- Week 7}\\[3pt]
+\large Học phần: Operating Systems [Multimedia] -- 20252}
+\author{Nguyễn Sỹ Tuấn \and Lê Huy Sơn \and Vũ Tiến Long}
+\date{Giai đoạn báo cáo: 9/5/2026 -- 15/5/2026}
+
+\begin{document}
+\maketitle
+
+\begin{tabular}{@{}ll@{}}
+\textbf{Mã số dự án:} & 25236 \\
+\textbf{Tên dự án:}   & Optimize pipe implementation to improve IPC throughput \\
+\textbf{Thiết kế:}    & Link Figma \\
+\textbf{Quản lý tác vụ:} & Link JIRA \\
+\textbf{Thành viên:}  & Nguyễn Sỹ Tuấn, Lê Huy Sơn, Vũ Tiến Long \\
+\end{tabular}
+
+\hrulefill
+
+% =====================================================================
+\section{Summary of latest progress}
+% =====================================================================
+
+\textit{(Viết khoảng 200--300 từ để tóm tắt quá trình thực hiện trong giai đoạn này và tổng mức độ hoàn thành hiện tại.)}
+
+Đây là tuần cuối cùng của dự án tối ưu hóa pipe. Căn cứ kế hoạch đề ra ở cuối tuần 6, chúng tôi đặt ra các mục tiêu:
+
+\begin{enumerate}
+  \item Triển khai \textbf{v6 -- Priority Boost}: scheduler ưu tiên tiến trình vừa được \texttt{wakeup}.
+  \item Triển khai \textbf{v7 -- Cache-line Alignment}: tách \texttt{nread}/\texttt{nwrite} lên hai cache line khác nhau.
+  \item Benchmark đầy đủ tất cả 7 phiên bản và vẽ biểu đồ tổng thể.
+\end{enumerate}
+
+Chúng tôi đã hoàn thành cả ba mục tiêu trên và mở rộng thêm hai công việc ngoài kế hoạch:
+
+\begin{itemize}
+  \item \textbf{v6 -- Priority Boost:} Thêm trường \texttt{priority} vào \texttt{struct proc}, hàm \texttt{wakeup()} gán \texttt{priority = PRIORITY\_BOOST = 10} cho process được đánh thức. Scheduler luôn chọn process có \texttt{priority} cao nhất trong số các \texttt{RUNNABLE} process. Sau mỗi tick, \texttt{yield()} giảm priority 1 đơn vị, tránh starvation. Kết quả: \textbf{13{,}981{,}013 B/s} tại \texttt{chunk\_bytes = 4096} -- tăng \textbf{1.33$\times$} so với v5.
+  \item \textbf{v7 -- Cache-line Alignment:} Chèn \texttt{char \_pad\_w[60]} và \texttt{char \_pad\_r[60]} giữa \texttt{nwrite} và \texttt{nread} trong \texttt{struct pipe}, đặt hai biến lên hai cache line 64-byte riêng biệt, loại bỏ false sharing trong môi trường multi-core. Trên single-CPU, v7 hơi chậm hơn v6 ($-14\%$) vì struct lớn hơn -- đây là kết quả đúng và có thể giải thích.
+  \item \textbf{v8 -- Newpipe (tổng hợp tất cả cơ chế):} Kết hợp 6 cơ chế tối ưu (bulk copy, 2-trang buffer 8 KB, page-indexed addressing, lazy wakeup, priority boost, cache-line alignment) vào một phiên bản hoàn chỉnh. Kết quả: \textbf{20{,}971{,}520 B/s} tại \texttt{chunk\_bytes $\geq$ 2048} -- \textbf{36.5$\times$} so với v1 baseline.
+  \item \textbf{IPC use-case programs:} Viết 5 chương trình user-space minh họa các IPC pattern phổ biến: \texttt{pipe\_wc}, \texttt{pipe\_chain}, \texttt{pipe\_fanout}, \texttt{pipe\_pingpong}, và \texttt{pipe\_live} (hiển thị tốc độ real-time mỗi tick).
+\end{itemize}
+
+\textbf{Tổng mức độ hoàn thành: 100\%} -- toàn bộ 8 phiên bản (v1--v8) đã triển khai, benchmark, phân tích và tài liệu hóa đầy đủ.
+
+% =====================================================================
+\section{Review of technical activities}
+% =====================================================================
+
+% ---------------------------------------------------------------------
+\subsection{Activity 1: v6 -- Priority Boost}
+
+\subsubsection{Bottleneck nhắm tới}
+
+Sau v5, throughput đạt $\sim$10.5 MB/s tại \texttt{chunk\_bytes = 4096} nhưng vẫn còn một nguồn overhead quan trọng: \textbf{scheduler delay}. Khi writer gọi \texttt{wakeup()} để đánh thức reader, reader chuyển sang trạng thái \texttt{RUNNABLE} nhưng không được scheduler chọn chạy ngay -- nó phải xếp hàng và chờ đến lượt trong round-robin. Khoảng thời gian này, CPU nhàn rỗi hoặc chạy các process khác trong khi pipe data đang chờ được xử lý.
+
+\begin{callout}
+\textbf{Lý thuyết liên quan -- Scheduling và IO-bound boosting:}
+
+Trong lý thuyết scheduling, tiến trình được phân loại thành hai loại:
+\begin{itemize}
+  \item \textbf{CPU-bound:} chạy lâu liên tục, hiếm khi block -- ví dụ: tính toán số học.
+  \item \textbf{IO-bound (interactive):} thường xuyên block chờ I/O, mỗi lần chạy ngắn -- ví dụ: đọc pipe, đọc file.
+\end{itemize}
+
+Thuật toán \textbf{Round-Robin} của xv6 gốc không phân biệt hai loại này -- mọi \texttt{RUNNABLE} process được chọn tuần tự. Điều này gây \textbf{convoy effect}: một IO-bound process (reader) vừa được wakeup phải chờ nhiều CPU-bound process khác chạy hết quantum trước, làm tăng latency mỗi hop IPC.
+
+\textbf{Multi-Level Feedback Queue (MLFQ)} -- Corbató 1962 -- giải quyết vấn đề này bằng cách ưu tiên IO-bound process: khi một process block chờ I/O, nó được thăng lên queue ưu tiên cao. v6 áp dụng triết lý MLFQ ở dạng đơn giản: \textbf{priority boost} cho process vừa bị wakeup từ sleep trên pipe.
+\end{callout}
+
+\subsubsection{Thay đổi trong \texttt{struct proc} và scheduler}
+
+\textbf{Thêm trường \texttt{priority} vào \texttt{struct proc}} (\texttt{kernel/proc.h}):
+
+\begin{lstlisting}[language=C]
+#if PIPE_VERSION >= 6
+#define PRIORITY_BASE   0
+#define PRIORITY_BOOST  10
+
+struct proc {
+    // ... cac truong hien co ...
+    int priority;    // scheduling priority (0 = binh thuong, 10 = boost)
+};
+#endif
+\end{lstlisting}
+
+\textbf{Hàm \texttt{wakeup()} -- gán boost khi đánh thức:}
+
+\begin{lstlisting}[language=C]
+void wakeup(void *chan) {
+    struct proc *p;
+    for(p = proc; p < &proc[NPROC]; p++) {
+        if(p != myproc()) {
+            acquire(&p->lock);
+            if(p->state == SLEEPING && p->chan == chan) {
+                p->state = RUNNABLE;
+#if PIPE_VERSION >= 6
+                p->priority = PRIORITY_BOOST;  // dat priority cao nhat
+#endif
+            }
+            release(&p->lock);
+        }
+    }
+}
+\end{lstlisting}
+
+\textbf{Scheduler -- chọn process có \texttt{priority} cao nhất:}
+
+\begin{lstlisting}[language=C]
+void scheduler(void) {
+    struct cpu *c = mycpu();
+    for(;;) {
+        intr_on();
+        struct proc *chosen = 0;
+        for(p = proc; p < &proc[NPROC]; p++) {
+            acquire(&p->lock);
+            if(p->state == RUNNABLE) {
+#if PIPE_VERSION >= 6
+                if(chosen == 0 || p->priority > chosen->priority)
+                    chosen = p;
+#else
+                chosen = p;  // round-robin goc
+#endif
+            }
+            if(p != chosen) release(&p->lock);
+        }
+        if(chosen) {
+            chosen->state = RUNNING;
+            c->proc = chosen;
+            swtch(&c->context, &chosen->context);
+            release(&chosen->lock);
+        }
+    }
+}
+\end{lstlisting}
+
+\textbf{\texttt{yield()} -- decay priority mỗi tick để tránh starvation:}
+
+\begin{lstlisting}[language=C]
+void yield(void) {
+    struct proc *p = myproc();
+    acquire(&p->lock);
+#if PIPE_VERSION >= 6
+    if(p->priority > PRIORITY_BASE)
+        p->priority--;      // giam 1 don vi moi khi yield
+#endif
+    p->state = RUNNABLE;
+    sched();
+    release(&p->lock);
+}
+\end{lstlisting}
+
+\subsubsection{Sơ đồ trước và sau Priority Boost}
+
+\textbf{Trước v6 (round-robin) -- reader phải chờ:}
+
+\begin{lstlisting}[style=plain]
+  Tick timeline (moi o = 1 quantum):
+
+  CPU: [P_other][P_other][P_other][READER][WRITER][READER][WRITER]
+                                     ^
+                        Reader duoc wakeup nhung phai
+                        cho 3 quantum cua cac process khac
+                        truoc khi duoc scheduler chon.
+\end{lstlisting}
+
+\textbf{Sau v6 (priority boost) -- reader chạy NGAY:}
+
+\begin{lstlisting}[style=plain]
+  CPU: [P_other][READER ][WRITER ][READER ][WRITER ]
+                   ^
+        reader vua duoc wakeup voi priority=10,
+        scheduler chon ngay tick tiep theo.
+        P_other phai nhuong.
+
+  priority decay: 10 -> 9 -> 8 -> ... -> 0 (sau 10 tick -> binh thuong)
+\end{lstlisting}
+
+\textbf{Số lần context switch v5 vs v6 (tính cho 4 MB, chunk=1024):}
+
+\begin{lstlisting}[style=plain]
+v5: ~2,048 cap sleep/wakeup  x  ~3 tick cho scheduler  = ~6,144 quantum lang phi
+v6: ~2,048 cap sleep/wakeup  x  ~1 tick cho (boost)    = ~2,048 quantum lang phi
+-> Giam ~3x scheduler delay overhead
+\end{lstlisting}
+
+\subsubsection{Kết quả đo đạc v6}
+
+\begin{center}
+\begin{tabular}{rrrr}
+\toprule
+\textbf{chunk\_bytes} & \textbf{v5 (B/s)} & \textbf{v6 (B/s)} & \textbf{Tăng} \\
+\midrule
+64   & 1{,}048{,}576  & 1{,}061{,}849  & $1.01\times$ \\
+128  & 1{,}906{,}501  & 1{,}997{,}287  & $1.05\times$ \\
+256  & 3{,}355{,}443  & 3{,}495{,}253  & $1.04\times$ \\
+512  & 5{,}242{,}880  & 5{,}592{,}405  & $1.07\times$ \\
+1024 & 6{,}990{,}506  & 8{,}388{,}608  & $1.20\times$ \\
+2048 & 9{,}320{,}675  & 10{,}485{,}760 & $1.12\times$ \\
+\textbf{4096} & \textbf{10{,}485{,}760} & \textbf{13{,}981{,}013} & $\mathbf{1.33\times}$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\textbf{Phân tích:} Speedup lớn nhất ở \texttt{chunk\_bytes} lớn (1024--4096) vì đây là kích thước mà số lần \texttt{sleep}/\texttt{wakeup} nhiều nhất và scheduler delay ảnh hưởng nhiều nhất. Ở \texttt{chunk\_bytes = 64}, pipe hiếm khi đầy nên reader ít khi ngủ $\rightarrow$ boost có ít cơ hội phát huy.
+
+% ---------------------------------------------------------------------
+\subsection{Activity 2: v7 -- Cache-line Alignment}
+
+\subsubsection{Bottleneck nhắm tới -- False Sharing}
+
+Trong \texttt{struct pipe} của v1--v6, \texttt{nwrite} và \texttt{nread} nằm cạnh nhau trong memory, thường trên \textbf{cùng một cache line 64 byte}. Trong môi trường multi-core (\texttt{CPUS} $\geq$ 2), điều này gây \textbf{false sharing}:
+
+\begin{itemize}
+  \item Core 0 (writer) ghi \texttt{nwrite} $\rightarrow$ cache line bị đánh dấu \textbf{Modified} (MESI: M).
+  \item Core 1 (reader) muốn đọc \texttt{nread} $\rightarrow$ cache line đó đang ở Core 0 $\rightarrow$ phải \textbf{invalidate} cache line của Core 1 $\rightarrow$ cache miss $\rightarrow$ stall.
+\end{itemize}
+
+Hai biến \texttt{nread} và \texttt{nwrite} \textbf{không chia sẻ dữ liệu thật}, nhưng vì cùng cache line $\rightarrow$ CPU phải synchronize giữa hai core -- đây là ``false'' sharing, tốn kém như real sharing nhưng không có lý do.
+
+\begin{callout}
+\textbf{Lý thuyết liên quan -- MESI Protocol và False Sharing:}
+
+\textbf{MESI} là giao thức coherence phổ biến nhất trong CPU multi-core:
+
+\begin{center}
+\begin{tabular}{ll}
+\toprule
+\textbf{Trạng thái} & \textbf{Ý nghĩa} \\
+\midrule
+\textbf{M} (Modified)  & Core này có bản sao mới nhất, các core khác không có \\
+\textbf{E} (Exclusive) & Core này có bản sao, các core khác không có \\
+\textbf{S} (Shared)    & Nhiều core có bản sao giống nhau \\
+\textbf{I} (Invalid)   & Cache line bị vô hiệu, phải reload từ memory/L3 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\textbf{False sharing:} hai core ghi vào hai biến \emph{khác nhau} nhưng cùng cache line:
+
+\begin{lstlisting}[style=plain]
+Core 0 ghi nwrite:  cache line -> M (Core 0)  -> I (Core 1)
+Core 1 doc nread:   cache miss! phai fetch lai tu L3/LLC
+Core 0 ghi nwrite:  cache line -> M (Core 0)  -> I (Core 1)
+Core 1 doc nread:   cache miss! lai fetch lai...
+\end{lstlisting}
+
+Mỗi cycle false sharing: $\sim$100--300 cycle stall. \textbf{Giải pháp chuẩn trong Linux kernel:} macro \texttt{\_\_cacheline\_aligned} chèn padding để biến bắt đầu tại địa chỉ bội số của 64.
+\end{callout}
+
+\subsubsection{Cấu trúc \texttt{struct pipe} trước và sau v7}
+
+\textbf{Trước v7 -- \texttt{nwrite} và \texttt{nread} cùng cache line:}
+
+\begin{lstlisting}[style=plain]
+  Offset  0:  spinlock  (40 B)   +
+  Offset 40:  char *data ( 8 B)  |  cache line 0 (byte 0--63)
+  Offset 48:  nread      ( 4 B)  |
+  Offset 52:  nwrite     ( 4 B)  |
+  Offset 56:  readopen   ( 4 B)  |
+  Offset 60:  writeopen  ( 4 B)  +
+                                   <- nread va nwrite cung cache line!
+  Core 0 ghi nwrite -> invalidate cache line -> Core 1 miss nread
+\end{lstlisting}
+
+\textbf{Sau v7 -- padding tách \texttt{nwrite} và \texttt{nread}:}
+
+\begin{lstlisting}[language=C]
+#if PIPE_VERSION >= 7
+struct pipe {
+    struct spinlock lock;       // 40 B -- cache line 0
+    char  *data;                //  8 B
+    int    readopen;            //  4 B
+    int    writeopen;           //  4 B
+    uint   nwrite;              //  4 B  +
+    char   _pad_w[60];          // 60 B  |  cache line 1 (byte 64--127)
+    uint   nread;               //  4 B  +  -> day nread sang cache line 2
+    char   _pad_r[60];          // 60 B  -- cache line 2 (byte 128--191)
+    int    need_wakeup;         //  4 B  -- cache line 3
+    int    was_full;            //  4 B
+};
+#endif
+\end{lstlisting}
+
+\textbf{Layout sau v7:}
+
+\begin{lstlisting}[style=plain]
+  cache line 0 (byte   0-- 63):  spinlock + data ptr + readopen + writeopen + nwrite
+  cache line 1 (byte  64--127):  _pad_w (padding)
+  cache line 2 (byte 128--191):  nread + _pad_r (padding)
+  cache line 3 (byte 192--255):  flags lazy wakeup
+
+  Core 0 ghi nwrite -> chi dirty cache line 0 -> Core 1 KHONG bi invalidate
+  Core 1 doc nread  -> cache line 2 van valid  -> KHONG co stall
+\end{lstlisting}
+
+\subsubsection{Nhận xét về kết quả đo đạc v7 trên single-CPU}
+
+\begin{center}
+\begin{tabular}{rrrr}
+\toprule
+\textbf{chunk\_bytes} & \textbf{v6 (B/s)} & \textbf{v7 (B/s)} & \textbf{Thay đổi} \\
+\midrule
+64   & 1{,}061{,}849  & 1{,}075{,}462  & $+1.3\%$ \\
+128  & 1{,}997{,}287  & 1{,}997{,}287  & $0\%$ \\
+256  & 3{,}495{,}253  & 3{,}495{,}253  & $0\%$ \\
+512  & 5{,}592{,}405  & 5{,}592{,}405  & $0\%$ \\
+1024 & 8{,}388{,}608  & 8{,}388{,}608  & $0\%$ \\
+2048 & 10{,}485{,}760 & 10{,}485{,}760 & $0\%$ \\
+\textbf{4096} & \textbf{13{,}981{,}013} & \textbf{11{,}983{,}725} & $\mathbf{-14\%}$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\textbf{Phân tích -- tại sao v7 hơi chậm hơn v6 ở chunk=4096?}
+
+Kết quả này \textbf{đúng và có thể giải thích được} trên single-CPU (\texttt{CPUS=1}):
+
+\begin{enumerate}
+  \item \textbf{False sharing không xảy ra trên 1 core} -- không có Core 1 để bị invalidate, nên lợi ích của alignment = 0.
+  \item \textbf{Struct lớn hơn đáng kể} -- từ $\sim$72 byte lên $\sim$256 byte (padding 2 $\times$ 60 byte). Struct lớn làm tăng số cache line phải load trong hot path.
+  \item \textbf{Lợi ích thực sự của v7 chỉ thấy được với \texttt{CPUS} $\geq$ 2} -- v7 là tối ưu hóa cho \textbf{scalability}, không phải throughput đơn luồng.
+\end{enumerate}
+
+% ---------------------------------------------------------------------
+\subsection{Activity 3: v8 -- Newpipe (tổng hợp tất cả cơ chế)}
+
+\subsubsection{Mục tiêu -- Kết hợp 6 cơ chế thành 1 phiên bản hoàn chỉnh}
+
+Sau khi phân tích 7 phiên bản, chúng tôi xác định 6 cơ chế tối ưu không xung đột nhau và có thể kết hợp:
+
+\begin{center}
+\begin{tabular}{clll}
+\toprule
+\textbf{\#} & \textbf{Cơ chế} & \textbf{Nguồn gốc} & \textbf{Bottleneck giải quyết} \\
+\midrule
+1 & Bulk \texttt{copyin}/\texttt{copyout}    & v2           & $n$ lần page walk $\rightarrow$ 2 lần/write \\
+2 & 2-trang buffer (8 KB)                    & v4 mở rộng   & capacity 4 KB $\rightarrow$ 8 KB \\
+3 & Page-indexed addressing                  & mới trong v8 & tránh cross-page read \\
+4 & Lazy wakeup                              & v5           & $O(\text{NPROC})$ wakeup $\rightarrow$ $O(1)$ \\
+5 & Priority boost                           & v6           & scheduler delay sau wakeup \\
+6 & Cache-line alignment                     & v7           & false sharing trên multi-core \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsubsection{Cơ chế mới trong v8 -- Page-indexed Addressing}
+
+v4 dùng 1 trang (4096 byte) với flat ring -- \texttt{memmove} có thể bị cắt ở ranh giới trang khi ring wrap-around. v8 dùng \textbf{2 trang riêng biệt} và đảm bảo mỗi \texttt{copyin}/\texttt{copyout} chỉ nằm trong 1 trang:
+
+\begin{lstlisting}[language=C]
+#define DATA_PAGES  2
+#define PIPE_TOTAL  (DATA_PAGES * PGSIZE)   // 8192 byte
+
+struct pipe {
+    struct spinlock lock;
+    char  *data[DATA_PAGES];   // 2 con tro toi 2 trang rieng biet
+    uint   nwrite;
+    char   _pad_w[60];         // cache-line padding
+    uint   nread;
+    char   _pad_r[60];
+    int    need_wakeup;        // lazy wakeup flag (writer side)
+    int    was_full;           // lazy wakeup flag (reader side)
+};
+\end{lstlisting}
+
+\textbf{Page-indexed addressing trong pipewrite:}
+
+\begin{lstlisting}[language=C]
+uint pos       = pi->nwrite % PIPE_TOTAL;  // vi tri tuyet doi trong 8KB ring
+uint page_idx  = pos / PGSIZE;             // thuoc trang 0 hay trang 1?
+uint page_off  = pos % PGSIZE;             // offset trong trang do
+uint till_page = PGSIZE - page_off;        // con bao nhieu byte den cuoi trang
+
+int  to_copy = umin(n - i, umin(avail, till_page));
+
+// copyin KHONG BAO GIO vuot ranh gioi trang
+copyin(pr->pagetable, pi->data[page_idx] + page_off, addr + i, to_copy);
+pi->nwrite += to_copy;
+\end{lstlisting}
+
+\textbf{Sơ đồ 2-trang ring buffer của v8:}
+
+\begin{lstlisting}[style=plain]
+  pi->data[0]  (trang 1, PGSIZE=4096 B)    pi->data[1]  (trang 2, 4096 B)
+  +------------------------------------+   +------------------------------------+
+  |  [0..4095]                         |   |  [0..4095]                         |
+  |  ....da doc...|  valid data        |   |  valid data  |........trong......  |
+  +------------------------------------+   +------------------------------------+
+                  ^                                        ^
+         nread % 8192 = 1500                      nwrite % 8192 = 5500
+         (trang 0, offset 1500)                   (trang 1, offset 1404)
+
+  Lan ghi tiep: page_idx=1, page_off=1404, till_page=2692
+  -> copyin(data[1]+1404, src, 2692) -- nam gon trong trang 1, khong cross-page
+\end{lstlisting}
+
+\textbf{OOM-safe rollback trong \texttt{pipealloc}:}
+
+\begin{lstlisting}[language=C]
+struct pipe *pi = (struct pipe*) kalloc();   // trang struct
+if(pi == 0) goto bad;
+
+int i;
+for(i = 0; i < DATA_PAGES; i++){
+    pi->data[i] = kalloc();                  // trang data
+    if(pi->data[i] == 0){
+        int j;
+        for(j = 0; j < i; j++)
+            kfree(pi->data[j]);             // rollback cac trang da cap
+        kfree((void*)pi);
+        goto bad;
+    }
+}
+\end{lstlisting}
+
+\subsubsection{Tổng hợp 6 cơ chế và tác động lý thuyết}
+
+\begin{lstlisting}[style=plain]
+Bottleneck 1: Per-byte copy overhead
+  v1: 4,194,304 lan copyin (4MB / 1 byte)
+  v8: 2,048 lan copyin     (4MB / 2048 B chunk trung binh)
+  -> Giam 2,048x so lan page table walk
+
+Bottleneck 2: Sleep/wakeup frequency
+  v1: ~16,384 lan sleep/wakeup (512B buffer x 4MB = 8192 lan day)
+  v8: ~1,024  lan sleep/wakeup (8KB  buffer x 4MB = 512  lan day)
+  -> Giam 16x so lan context switch
+
+Bottleneck 3: Wakeup scan overhead
+  v1: O(NPROC=64) moi wakeup, luc nao cung goi
+  v8: O(1) fast path khi peer khong ngu (lazy wakeup)
+  -> Giam ~64x overhead wakeup trong fast path
+
+Bottleneck 4: Scheduler delay sau wakeup
+  v1: reader cho round-robin (~3 quantum)
+  v8: reader duoc boost priority -> chay tick tiep theo
+  -> Giam ~3x latency sau wakeup
+
+Bottleneck 5: False sharing (multi-core)
+  v1: nwrite/nread cung cache line -> MESI invalidate lien tuc
+  v8: padding 60B tach biet -> khong co false sharing
+  -> Loai bo hoan toan tren multi-core
+\end{lstlisting}
+
+\subsubsection{Kết quả đo đạc v8 và so sánh toàn bộ v1--v8}
+
+\begin{center}
+\begin{tabularx}{\linewidth}{rrrrrXr}
+\toprule
+\textbf{chunk} & \textbf{v1} & \textbf{v5} & \textbf{v6} & \textbf{v7} & \textbf{v8 (B/s)} & \textbf{v8/v1} \\
+\midrule
+64   & 206{,}108   & 1{,}048{,}576  & 1{,}061{,}849  & 1{,}075{,}462  & \textbf{1{,}075{,}462}  & $5.2\times$ \\
+128  & 307{,}275   & 1{,}906{,}501  & 1{,}997{,}287  & 1{,}997{,}287  & \textbf{2{,}097{,}152}  & $6.8\times$ \\
+256  & 427{,}990   & 3{,}355{,}443  & 3{,}495{,}253  & 3{,}495{,}253  & \textbf{3{,}813{,}003}  & $8.9\times$ \\
+512  & 524{,}288   & 5{,}242{,}880  & 5{,}592{,}405  & 5{,}592{,}405  & \textbf{6{,}990{,}506}  & $13.3\times$ \\
+1024 & 551{,}882   & 6{,}990{,}506  & 8{,}388{,}608  & 8{,}388{,}608  & \textbf{13{,}981{,}013} & $25.3\times$ \\
+2048 & 562{,}993   & 9{,}320{,}675  & 10{,}485{,}760 & 10{,}485{,}760 & \textbf{20{,}971{,}520} & $37.2\times$ \\
+\textbf{4096} & \textbf{574{,}562} & \textbf{10{,}485{,}760} & \textbf{13{,}981{,}013} & \textbf{11{,}983{,}725} & \textbf{20{,}971{,}520} & $\mathbf{36.5\times}$ \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\textbf{Biểu đồ ASCII throughput tại \texttt{chunk\_bytes = 1024} (B/s):}
+
+\begin{lstlisting}[style=plain]
+         0     3M    6M    9M   12M   15M   18M   21M  B/s
+         |-----+-----+-----+-----+-----+-----+-----+
+v1   #                                                 551,882
+v2   ###                                               1,582,756
+v3   #########                                         3,355,443
+v4   ############                                      3,994,575
+v5   ####################                              6,990,506
+v6   ########################                          8,388,608
+v7   ########################                          8,388,608
+v8   ###############################################   13,981,013
+\end{lstlisting}
+
+\textbf{Biểu đồ ASCII throughput tại \texttt{chunk\_bytes = 4096} (B/s):}
+
+\begin{lstlisting}[style=plain]
+         0     5M   10M   15M   20M  B/s
+         |-----+-----+-----+-----+
+v1   #                              574,562
+v2   #####                          1,864,135
+v3   #################              6,452,775
+v4   ############################   10,485,760
+v5   ############################   10,485,760
+v6   ######################################   13,981,013
+v7   #################################        11,983,725
+v8   #################################################   20,971,520
+\end{lstlisting}
+
+% ---------------------------------------------------------------------
+\subsection{Activity 4: IPC Use-case Programs}
+
+Để chứng minh tính ứng dụng thực tế của các cơ chế tối ưu, chúng tôi viết 5 chương trình user-space minh họa các IPC pattern phổ biến.
+
+\subsubsection{Tổng quan 5 chương trình}
+
+\begin{center}
+\begin{tabularx}{\linewidth}{lXrrl}
+\toprule
+\textbf{File} & \textbf{IPC Pattern} & \textbf{Pipe} & \textbf{Proc} & \textbf{Mô tả} \\
+\midrule
+\texttt{pipe\_wc.c}       & Producer-Consumer        & 1 & 2   & \texttt{gen\_text | wc} \\
+\texttt{pipe\_chain.c}    & Pipeline (dây chuyền)    & 2 & 3   & \texttt{gen | XOR | verify} \\
+\texttt{pipe\_fanout.c}   & Fan-out / Broadcast      & N & N+1 & 1 writer $\rightarrow$ 3 readers \\
+\texttt{pipe\_pingpong.c} & Request-Response (RPC)   & 2 & 2   & 10000 round-trip, đo RTT \\
+\texttt{pipe\_live.c}     & Live monitor             & 1 & 2   & KB/s mỗi tick (100ms) \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\subsubsection{Kết quả benchmark IPC use-cases -- v1 vs v8}
+
+\begin{lstlisting}[style=plain]
+pipe_wc -- Streaming text word-count:
+  v1: elapsed  80 ticks (8000 ms),  throughput    524,288 B/s (  512 KB/s)
+  v8: elapsed   3 ticks  (300 ms),  throughput 13,981,013 B/s (13,653 KB/s) ~27x
+
+pipe_chain -- 3-stage XOR transform pipeline:
+  v1: elapsed 152 ticks (15200 ms), throughput    275,941 B/s (  269 KB/s)
+  v8: elapsed   5 ticks   (500 ms), throughput  8,388,608 B/s (8,192 KB/s)  ~30x
+
+pipe_fanout -- Fan-out 1 writer -> 3 readers:
+  v1: elapsed 113 ticks (11300 ms), throughput    556,766 B/s (  543 KB/s)
+  v8: elapsed   2 ticks   (200 ms), throughput 31,457,280 B/s (30,720 KB/s) ~57x
+
+pipe_pingpong -- Bidirectional round-trip IPC:
+  v1: elapsed 180 ticks (18000 ms), ops/sec =  555, latency = 1.80 ms/rtt
+  v8: elapsed  29 ticks  (2900 ms), ops/sec = 3448, latency = 0.29 ms/rtt  ~6x
+\end{lstlisting}
+
+\begin{center}
+\begin{tabular}{lrrrl}
+\toprule
+\textbf{Use case} & \textbf{v1} & \textbf{v8} & \textbf{Speedup} & \textbf{Cơ chế chủ đạo} \\
+\midrule
+pipe\_wc      & 512 KB/s    & 13{,}653 KB/s  & $\sim$27$\times$  & bulk copy + 8KB buffer \\
+pipe\_chain   & 269 KB/s    &  8{,}192 KB/s  & $\sim$30$\times$  & 2 pipe $\times$ bulk copy \\
+pipe\_fanout  & 543 KB/s    & 30{,}720 KB/s  & $\sim$57$\times$  & 8KB buffer $\times$ 3 pipe \\
+pipe\_pingpong & 555 ops/s  &  3{,}448 ops/s & $\sim$6$\times$   & priority boost (latency) \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\textbf{Nhận xét:} \texttt{pipe\_fanout} đạt speedup cao nhất ($\sim$57$\times$) vì với 3 pipe song song và buffer 8 KB mỗi pipe, writer gần như không bao giờ block. \texttt{pipe\_pingpong} speedup thấp hơn ($\sim$6$\times$) vì bị giới hạn bởi latency: mỗi round-trip cần đúng 2 lần wakeup không thể tránh khỏi.
+
+\subsubsection{\texttt{pipe\_live} -- Hiển thị tốc độ real-time mỗi 100ms}
+
+\texttt{pipe\_live} in một dòng mỗi tick (100ms) hiển thị tốc độ hiện tại và thanh tiến trình, cho phép quan sát trực tiếp dữ liệu đang chảy qua pipe giữa hai tiến trình. Kiến trúc: \texttt{fork()} tạo hai tiến trình -- Parent (WRITER) ghi liên tục, Child (READER) đọc và in live stats.
+
+\textbf{Output mẫu v8 (16 MB):}
+
+\begin{lstlisting}[style=plain]
+  WRITER [PID 3] --[pipe]--> READER [child]
+
+  tick | progress                           | pct | KB/s
+  -----|------------------------------------|----|------
+     1 | [=>                          ] |  5% |  9400 KB/s |  940 KB
+     2 | [====>                       ] | 15% | 15720 KB/s |    2 MB
+     3 | [=======>                    ] | 25% | 16120 KB/s |    4 MB
+     ...
+    11 | [============================] |100% |  7720 KB/s |   16 MB
+  -> 10 ticks (1000 ms), trung binh 16,384 KB/s (16 MB/s)
+\end{lstlisting}
+
+\textbf{Output mẫu v1 (16 MB) -- minh họa sự chậm chạp:}
+
+\begin{lstlisting}[style=plain]
+     1 | [>                           ] |  0% |  290 KB/s |  29 KB
+     2 | [>                           ] |  0% |  485 KB/s |  77 KB
+     ...
+   353 | [============================] |100% |  240 KB/s |  16 MB
+  -> 352 ticks (35200 ms), trung binh 465 KB/s
+\end{lstlisting}
+
+$\rightarrow$ \textbf{v1 cần 353 dòng (35 giây), v8 chỉ cần 11 dòng (1 giây)} -- đây là cách trực quan nhất để thấy speedup $35\times$ là thực tế có thể quan sát được.
+
+% =====================================================================
+\section{Personal contribution}
+% =====================================================================
+
+\textbf{Member 1 (Nguyễn Sỹ Tuấn):} Triển khai v8 (newpipe -- tổng hợp 6 cơ chế), viết \texttt{pipe\_live.c} (real-time throughput monitor), viết \texttt{docs/v8.md} và \texttt{docs/v1\_vs\_v8\_os\_theory.md}, chạy benchmark đầy đủ v1--v8, phân tích OS-theory.
+
+\textbf{Member 2 (Lê Huy Sơn):} Triển khai v6 (priority boost -- thay đổi scheduler và \texttt{struct proc}), viết \texttt{pipe\_pingpong.c} (round-trip IPC), viết \texttt{pipe\_fanout.c} (fan-out pattern), phân tích kết quả scheduling.
+
+\textbf{Member 3 (Vũ Tiến Long):} Triển khai v7 (cache-line alignment), viết \texttt{pipe\_wc.c} (producer-consumer), viết \texttt{pipe\_chain.c} (3-stage pipeline), kiểm tra correctness toàn bộ v6--v8 (\texttt{usertests}, \texttt{pipetest}).
+
+% =====================================================================
+\section{Developed code review}
+% =====================================================================
+
+\subsection{Algorithmic development}
+
+Các kỹ thuật chính phát triển trong tuần này:
+
+\begin{enumerate}
+  \item \textbf{Priority-based scheduling (v6):} Thêm \texttt{priority} vào \texttt{struct proc}, \texttt{wakeup()} gán \texttt{priority = 10}, scheduler chọn process có priority cao nhất, \texttt{yield()} decay priority 1 đơn vị/tick. Tránh starvation vì priority về 0 sau tối đa 10 tick.
+  \item \textbf{Cache-line padding (v7):} Chèn \texttt{char \_pad\_w[60]} và \texttt{char \_pad\_r[60]} giữa \texttt{nwrite} và \texttt{nread} để đặt hai biến lên hai cache line 64-byte khác nhau. Đây là kỹ thuật chuẩn trong Linux kernel (\texttt{\_\_cacheline\_aligned}).
+  \item \textbf{2-page ring buffer với page-indexed addressing (v8):} \texttt{data[DATA\_PAGES]} với \texttt{DATA\_PAGES = 2}, tính \texttt{page\_idx = pos / PGSIZE} và \texttt{page\_off = pos \% PGSIZE} trước mỗi lần \texttt{copyin}/\texttt{copyout} để đảm bảo không vượt ranh giới trang.
+  \item \textbf{OOM-safe rollback (v8):} Loop cấp \texttt{DATA\_PAGES} lần \texttt{kalloc()} -- nếu lần thứ $i$ thất bại, free các trang $0..i-1$ trước khi \texttt{goto bad}.
+  \item \textbf{Lazy wakeup với dual flag (v8):} \texttt{need\_wakeup} (writer side) và \texttt{was\_full} (reader side) -- tránh gọi \texttt{wakeup()} khi peer đang chạy bình thường.
+\end{enumerate}
+
+\subsection{Phân tích so sánh tổng hợp v1--v8}
+
+\begin{center}
+\begin{tabularx}{\linewidth}{lXrrll}
+\toprule
+\textbf{Phiên bản} & \textbf{Cơ chế chính} & \textbf{Cap (B)} & \textbf{Wakeup cost} & \textbf{ctx-sw/4MB} & \textbf{kalloc} \\
+\midrule
+v1 & byte-by-byte       & 512   & $O(\text{NPROC})\times n$ & $\sim$16{,}384 & 1 \\
+v2 & bulk copy          & 512   & $O(\text{NPROC})\times$ít & $\sim$8{,}192  & 1 \\
+v3 & chunked ring       & 2{,}048 & $O(\text{NPROC})\times$ít & $\sim$2{,}048 & 1 \\
+v4 & page-isolated      & 4{,}096 & $O(\text{NPROC})\times$rất ít & $\sim$1{,}024 & 2 \\
+v5 & lazy wakeup        & 4{,}096 & $O(1)$ fast path & $\sim$1{,}024 & 2 \\
+v6 & priority boost     & 4{,}096 & $O(1)$ + boost   & $\sim$1{,}024 & 2 \\
+v7 & cache-line align   & 4{,}096 & $O(1)$ + boost   & $\sim$1{,}024 & 2 \\
+\textbf{v8} & \textbf{all + 8KB} & \textbf{8{,}192} & $\mathbf{O(1)}$ \textbf{+ boost} & $\sim$\textbf{512} & \textbf{3} \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\subsection{Source code enhanced and/or revised}
+
+\textbf{kernel/proc.h} -- thêm priority field và constants:
+
+\begin{lstlisting}[language=C]
+#if PIPE_VERSION >= 6
+#define PRIORITY_BASE   0
+#define PRIORITY_BOOST  10
+// trong struct proc:
+int priority;
+#endif
+\end{lstlisting}
+
+\textbf{kernel/proc.c} -- scheduler với priority selection và yield() decay:
+
+\begin{lstlisting}[language=C]
+// Chon process RUNNABLE co priority cao nhat
+struct proc *chosen = 0;
+for(p = proc; p < &proc[NPROC]; p++){
+    if(p->state == RUNNABLE){
+        if(chosen == 0 || p->priority > chosen->priority)
+            chosen = p;
+    }
+}
+
+// yield() -- giam priority moi tick
+void yield(void) {
+    struct proc *p = myproc();
+    acquire(&p->lock);
+    if(p->priority > PRIORITY_BASE)
+        p->priority--;
+    p->state = RUNNABLE;
+    sched();
+    release(&p->lock);
+}
+\end{lstlisting}
+
+\textbf{kernel/pipe.c} -- v8 struct và pipewrite core:
+
+\begin{lstlisting}[language=C]
+#if PIPE_VERSION == 8
+#define DATA_PAGES   2
+#define PIPE_TOTAL   (DATA_PAGES * PGSIZE)
+
+struct pipe {
+    struct spinlock lock;
+    char  *data[DATA_PAGES];   // 2 trang vat ly rieng biet
+    uint   nwrite;
+    char   _pad_w[60];         // cache-line padding
+    uint   nread;
+    char   _pad_r[60];
+    int    need_wakeup;        // lazy wakeup: reader dang ngu?
+    int    was_full;           // lazy wakeup: writer dang ngu?
+    int    readopen, writeopen;
+};
+
+// Trong pipewrite -- page-indexed copyin:
+uint pos       = pi->nwrite % PIPE_TOTAL;
+uint page_idx  = pos / PGSIZE;
+uint page_off  = pos % PGSIZE;
+uint till_page = PGSIZE - page_off;
+int  to_copy   = umin(n - i, umin(avail, till_page));
+copyin(pr->pagetable, pi->data[page_idx] + page_off, addr + i, to_copy);
+pi->nwrite += to_copy;
+#endif
+\end{lstlisting}
+
+\subsection{Testing result}
+
+\textbf{\texttt{usertests} và \texttt{pipetest} -- v6, v7, v8 đều pass:}
+
+\begin{lstlisting}[style=plain]
+$ usertests -q
+...
+ALL TESTS PASSED
+
+$ pipetest
+pipe basic:        OK
+pipe large write:  OK
+pipe blocking:     OK
+pipe close:        OK
+ALL PIPE TESTS PASSED
+\end{lstlisting}
+
+\textbf{Benchmark tổng hợp v1--v8 (chunk\_bytes = 1024, total\_bytes = 4 MB):}
+
+\begin{lstlisting}[style=plain]
+chunk_bytes = 1024
+version   throughput_bps    KB/s      speedup vs v1
+v1             551,882        539        1.00x
+v2           1,582,756      1,546        2.87x
+v3           3,355,443      3,277        6.08x
+v4           3,994,575      3,901        7.24x
+v5           6,990,506      6,827       12.67x
+v6           8,388,608      8,192       15.20x
+v7           8,388,608      8,192       15.20x
+v8          13,981,013     13,653       25.33x
+\end{lstlisting}
+
+\subsection{Đánh giá tổng thể dự án -- Amdahl's Law}
+
+\begin{callout}
+\textbf{Định luật Amdahl -- phân tích speedup thực tế:}
+
+\[
+\text{Speedup}(v8) = \frac{1}{(1-p) + p/s}
+\]
+
+Trong đó $p \approx 0.97$ là phần chi phí có thể tối ưu (từ cost model), $s$ là speedup của phần đó.
+
+\textbf{Đo thực tế:} $\text{Speedup}(v8/v1) = \mathbf{36.5\times}$ tại chunk\_bytes = 4096.
+
+\textbf{Dự đoán cost model:} $\sim$23$\times$. Thực tế vượt dự đoán vì priority boost (v6) tác động mạnh hơn mô hình tĩnh ước tính -- scheduler delay trong v1 lớn hơn dự kiến.
+\end{callout}
+
+\textbf{Chuỗi tối ưu và contribution từng bước:}
+
+\begin{lstlisting}[style=plain]
+v1 -> v2: bulk copy         ->  3.2x   (loai bo per-byte copyin)
+v2 -> v3: ring buffer       ->  3.5x   (tang capacity + no wrap)
+v3 -> v4: page isolation    ->  1.6x   (cache locality + 4KB cap)
+v4 -> v5: lazy wakeup       ->  1.0x   (fast path, it sleep)
+v5 -> v6: priority boost    ->  1.3x   (giam scheduler delay)
+v6 -> v7: cache-line align  ->  0.9x   (giam tren single-CPU)
+v7 -> v8: 8KB buffer + all  ->  1.7x   (capacity 2x, tong hop)
+-------------------------------------------------------------
+v1 -> v8: TONG              -> 36.5x   (do thuc te)
+\end{lstlisting}
+
+% =====================================================================
+\section{TODO}
+% =====================================================================
+
+\paragraph{(a) List of remaining issues:}
+\begin{itemize}
+  \item v7 (cache-line alignment) hiển thị speedup âm ($-14\%$) trên single-CPU vì struct lớn hơn. Cần benchmark lại với \texttt{CPUS=2} để xác nhận lợi ích thực trong môi trường multi-core.
+  \item \texttt{pipe\_live.c} chỉ đo throughput từ phía reader. Có thể mở rộng thành 3 tiến trình để hiển thị cả hai phía đồng thời.
+  \item Benchmark chưa đo \textbf{latency} khi \texttt{total\_bytes} nhỏ ($<$ 1 KB) -- quan trọng cho workload RPC thực tế.
+  \item Chưa thử nghiệm v8 với nhiều pipe đồng thời (stress test OOM path cho \texttt{pipealloc} 3 lần \texttt{kalloc()}).
+\end{itemize}
+
+\paragraph{(b) List of tasks to carry out in the next period:}
+
+Dự án đã hoàn thành \textbf{100\%} mục tiêu tối ưu hóa (v1--v8). Các công việc tiếp theo mang tính tài liệu hóa và trình bày:
+
+\begin{enumerate}
+  \item Chuẩn bị \textbf{slide tổng kết} -- bottleneck map, chuỗi speedup v1$\rightarrow$v8, kết luận Amdahl.
+  \item Viết \textbf{báo cáo cuối kỳ} tổng hợp toàn bộ 8 tuần, bao gồm kết quả benchmark đầy đủ và phân tích OS-theory từ \texttt{docs/v1\_vs\_v8\_os\_theory.md}.
+  \item Quay \textbf{video demo} chạy \texttt{pipe\_live} trong QEMU với v1 và v8 side-by-side để minh họa trực quan.
+\end{enumerate}
+
+\paragraph{(c) Milestone:}
+\begin{itemize}
+  \item \textbf{Hoàn thành:} Toàn bộ 8 phiên bản (v1--v8) đã triển khai, benchmark, và tài liệu hóa.
+  \item \textbf{Kết quả chính:} v8 đạt throughput \textbf{20.97 MB/s} (chunk=4096), speedup \textbf{36.5$\times$} so với v1 baseline (574 KB/s).
+  \item \textbf{Sẵn sàng:} Tài liệu phân tích OS-theory (\texttt{docs/v8.md}, \texttt{docs/v1\_vs\_v8\_os\_theory.md}), biểu đồ so sánh (\texttt{results/compare\_throughput.png}), và 5 chương trình IPC use-case minh họa thực tế.
+\end{itemize}
+
+% =====================================================================
+\section{Notes for revision}
+% =====================================================================
+
+\begin{itemize}
+  \item Tất cả benchmark chạy trên QEMU \texttt{CPUS=1}. v7 (cache-line alignment) cần đo lại với \texttt{CPUS=2} để thấy lợi ích thực -- trên single-CPU struct lớn hơn làm hại nhỏ, nhưng trên multi-core loại bỏ false sharing là cải thiện quyết định.
+  \item Speedup v8 ($36.5\times$) vượt dự đoán cost model ($\sim$23$\times$): nguyên nhân chính là priority boost tác động mạnh hơn dự đoán tĩnh, do scheduler delay trong v1 lớn hơn khi nhiều process cạnh tranh.
+  \item \texttt{pipe\_pingpong} speedup ($\sim$6$\times$) thấp hơn các benchmark streaming ($\sim$27--57$\times$) là đúng về lý thuyết: RTT bị giới hạn bởi số lần wakeup cố định (2 lần/round), không thể tránh bằng buffer lớn hơn; chỉ priority boost giảm thời gian chờ mỗi hop.
+  \item v8 dùng 3 lần \texttt{kalloc()} mỗi pipe (1 trang struct + 2 trang data). Cần ghi rõ trong tài liệu cuối kỳ: hệ thống chỉ có 128 MB RAM (QEMU \texttt{-m 128M}), tổng $\sim$32K trang, mỗi pipe chiếm 3 trang $\rightarrow$ tối đa $\sim$10K pipe đồng thời -- đủ cho mọi workload thực tế trong xv6.
+\end{itemize}
+
+\end{document}

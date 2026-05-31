@@ -1,0 +1,842 @@
+% =====================================================================
+%  Progress Report -- Week 6
+%  Optimize pipe implementation to improve IPC throughput (xv6-riscv)
+%
+%  Compile with:  xelatex report_week6.tex
+%  Requires fonts: DejaVu Serif / DejaVu Sans Mono (Vietnamese + box chars)
+% =====================================================================
+\documentclass[11pt,a4paper]{article}
+
+% ----- Engine & language -----
+\usepackage{fontspec}
+\setmainfont{DejaVu Serif}
+\setsansfont{DejaVu Sans}
+\setmonofont{DejaVu Sans Mono}[Scale=0.82]
+
+% ----- Layout -----
+\usepackage[a4paper,margin=2.2cm]{geometry}
+\usepackage{parskip}
+\usepackage{microtype}
+\usepackage{titlesec}
+\titleformat{\section}{\large\bfseries}{\thesection}{1em}{}[\titlerule]
+\titleformat{\subsection}{\normalsize\bfseries}{\thesubsection}{1em}{}
+\titleformat{\subsubsection}{\normalsize\itshape}{\thesubsubsection}{1em}{}
+
+% ----- Tables, lists, math -----
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{array}
+\usepackage{enumitem}
+\setlist{itemsep=2pt, topsep=4pt}
+\usepackage{amsmath}
+\usepackage{float}
+\usepackage{caption}
+
+% ----- Code & verbatim -----
+\usepackage{listings}
+\usepackage{xcolor}
+\definecolor{codebg}{RGB}{246,246,246}
+\definecolor{codekw}{RGB}{30,90,180}
+\definecolor{codecm}{RGB}{120,120,120}
+\definecolor{codestr}{RGB}{0,128,0}
+\lstdefinestyle{cstyle}{
+  basicstyle=\ttfamily\footnotesize,
+  backgroundcolor=\color{codebg},
+  keywordstyle=\color{codekw}\bfseries,
+  commentstyle=\color{codecm}\itshape,
+  stringstyle=\color{codestr},
+  numbers=none,
+  frame=single,
+  rulecolor=\color{black!20},
+  breaklines=true,
+  showstringspaces=false,
+  language=C,
+  literate={->}{{$\rightarrow$}}2 {<-}{{$\leftarrow$}}2
+           {~}{{$\sim$}}1 {*}{{*}}1
+}
+\lstset{style=cstyle}
+
+% Plain ASCII / diagram listing (no syntax highlighting)
+\lstdefinestyle{plain}{
+  basicstyle=\ttfamily\footnotesize,
+  backgroundcolor=\color{codebg},
+  keywords={},
+  language={},
+  numbers=none,
+  frame=single,
+  rulecolor=\color{black!20},
+  breaklines=false,
+  showstringspaces=false,
+  upquote=true,
+}
+
+% ----- Callout boxes -----
+\usepackage{mdframed}
+\newmdenv[
+  linecolor=blue!55, linewidth=2pt,
+  topline=false, bottomline=false, rightline=false,
+  innerleftmargin=10pt, innerrightmargin=8pt,
+  innertopmargin=6pt, innerbottommargin=6pt,
+  backgroundcolor=blue!3
+]{callout}
+
+\newmdenv[
+  linecolor=orange!75, linewidth=2pt,
+  topline=false, bottomline=false, rightline=false,
+  innerleftmargin=10pt, innerrightmargin=8pt,
+  innertopmargin=6pt, innerbottommargin=6pt,
+  backgroundcolor=orange!4
+]{warnbox}
+
+% ----- Hyperref last -----
+\usepackage[hidelinks]{hyperref}
+
+% ----- Title -----
+\title{\textbf{Progress Report -- Week 6}\\[3pt]
+\large Học phần: Operating Systems [Multimedia] -- 20252}
+\author{Nguyễn Sỹ Tuấn \and Lê Huy Sơn \and Vũ Tiến Long}
+\date{Giai đoạn báo cáo: 2/5/2026 -- 8/5/2026}
+
+\begin{document}
+\maketitle
+
+\begin{tabular}{@{}ll@{}}
+\textbf{Mã số dự án:} & 25236 \\
+\textbf{Tên dự án:}   & Optimize pipe implementation to improve IPC throughput \\
+\textbf{Thiết kế:}    & Link Figma \\
+\textbf{Quản lý tác vụ:} & Link JIRA \\
+\textbf{Thành viên:}  & Nguyễn Sỹ Tuấn, Lê Huy Sơn, Vũ Tiến Long \\
+\end{tabular}
+
+\hrulefill
+
+% =====================================================================
+\section{Summary of latest progress}
+% =====================================================================
+
+\textit{(Viết khoảng 200--300 từ để tóm tắt quá trình thực hiện trong giai đoạn này và tổng mức độ hoàn thành hiện tại.)}
+
+Như đã lên kế hoạch ở cuối tuần 5, các task cần thực hiện trong tuần này là:
+
+\begin{enumerate}
+  \item Thí nghiệm ablation \texttt{v2-cap2048} để tách hai yếu tố speedup của v3.
+  \item Đo trực tiếp các chi phí bằng \texttt{rdcycle}.
+  \item Triển khai v4 -- Multi-page Allocation.
+  \item Triển khai v5 -- Lazy Wakeup.
+\end{enumerate}
+
+Trong tuần này, chúng tôi đã hoàn thành tất cả bốn task trên:
+
+\begin{itemize}
+  \item \textbf{Ablation \texttt{v2-cap2048}:} Tạo biến thể v2 với flat buffer 2048 byte + bulk copy (không chunked) để kiểm soát từng biến riêng lẻ. Kết quả: khoảng 63\% speedup của v3 so với v2 đến từ \emph{tăng capacity}, và 37\% còn lại từ \emph{loại bỏ wrap-around}. Điều này đính chính phân tích ở tuần 5.
+  \item \textbf{\texttt{rdcycle} measurements:} Viết \texttt{pipemicro.c}, chèn \texttt{r\_cycle()} quanh từng giai đoạn (\texttt{copyin}, syscall, ctx-switch), xác nhận cost-model tuần 5 sai lệch chỉ $\sim 3$--$5\%$ -- đủ tin cậy để xếp hạng tương đối, song cần dùng số đo thực khi kết luận chính xác.
+  \item \textbf{v4 -- Multi-page Allocation:} Tách riêng trang bộ nhớ cho pipe data (1 trang = 4096 byte, cấp bởi \texttt{kalloc()} thứ hai), giải quyết internal fragmentation cấp trang và tách cache line giữa metadata và data. Throughput tăng $\sim 1.4\times$ so với v3 ở \texttt{chunk\_bytes = 4096}.
+  \item \textbf{v5 -- Lazy Wakeup:} Thêm flag \texttt{read\_sleeping}/\texttt{write\_sleeping} vào \texttt{struct pipe}, chỉ gọi \texttt{wakeup()} khi peer \emph{thực sự} đang ngủ -- giảm cost từ $O(\text{NPROC})$ mỗi write/read xuống $O(1)$ trung bình.
+\end{itemize}
+
+\textbf{v6 -- Priority Boost} và \textbf{v7 -- Cache-line Alignment} được dời sang tuần sau để có thêm thời gian phân tích scheduler internals và multi-core behavior.
+
+Tổng mức độ hoàn thành hiện tại: $\sim 71\%$ (5/7 phiên bản, tính cả v1 baseline + v2 + v3 từ tuần 5).
+
+% =====================================================================
+\section{Review of technical activities}
+% =====================================================================
+
+% ---------------------------------------------------------------------
+\subsection{Activity 1: Ablation study \texttt{v2-cap2048} -- tách hai yếu tố speedup của v3}
+
+\subsubsection{Bối cảnh -- Vì sao cần ablation study}
+
+Tuần trước, chúng tôi ghi nhận speedup của v3 so với v2 ở \texttt{chunk\_bytes = 4096} là $\mathbf{3.29\times}$, nhưng v3 thay đổi \emph{hai biến cùng lúc}:
+
+\begin{itemize}
+  \item \textbf{(a) Cấu trúc chunked ring} $\rightarrow$ loại bỏ wrap-around, mỗi \texttt{copyin} nằm gọn trong 1 sub-buffer.
+  \item \textbf{(b) Capacity tăng 512 $\rightarrow$ 2048 byte} $\rightarrow$ ít lần pipe đầy $\rightarrow$ ít cặp \texttt{sleep}/\texttt{wakeup} và context switch.
+\end{itemize}
+
+Không thể biết yếu tố nào đóng góp bao nhiêu nếu không kiểm soát từng biến riêng.
+
+\begin{callout}
+\textbf{Lý thuyết liên quan -- Ablation Study:} Trong nghiên cứu hệ thống máy tính, ``ablation study'' (nghiên cứu cắt bỏ) là kỹ thuật loại bỏ từng thành phần của hệ thống và đo lại hiệu năng, nhằm xác định đóng góp định lượng của từng phần. Nếu bỏ thành phần X mà hiệu năng giảm Y\%, thì X đóng góp $\sim Y\%$ vào tổng speedup. Trong hệ điều hành, ablation study thường được dùng khi một bản vá thay đổi nhiều biến cùng lúc -- cần tách biệt để kết luận đúng.
+\end{callout}
+
+\subsubsection{Thiết kế thí nghiệm}
+
+Ba điểm so sánh được thiết lập:
+
+\begin{lstlisting}[style=plain]
+v2          : flat ring 512B  + bulk copy                -> X1
+v2-cap2048  : flat ring 2048B + bulk copy (khong chunked) -> X2
+v3          : chunked ring 4x512B + bulk copy             -> X3
+
+Dong gop do capacity (b)  = X2 - X1
+Dong gop do chunked   (a) = X3 - X2
+\end{lstlisting}
+
+\texttt{v2-cap2048} chỉ thay đổi duy nhất \texttt{\#define PIPESIZE 2048} trong code của v2. Wrap-around vẫn xảy ra bình thường khi \texttt{nwrite} vượt qua vị trí 2048 -- điều kiện duy nhất khác với v2 là buffer lớn hơn.
+
+\subsubsection{Kết quả ablation}
+
+\begin{center}
+\begin{tabular}{rrrrcc}
+\toprule
+\textbf{chunk\_bytes} & \textbf{v2 (B/s)} & \textbf{v2-cap2048 (B/s)} & \textbf{v3 (B/s)} & \textbf{capacity} & \textbf{chunked} \\
+\midrule
+512  & 1{,}353{,}001 & 2{,}012{,}480 & 1{,}997{,}287 & $\sim 49\%$ & $\sim -1\%$ \\
+1024 & 1{,}613{,}193 & 2{,}890{,}443 & 3{,}226{,}387 & $\sim 79\%$ & $\sim 21\%$ \\
+2048 & 1{,}747{,}626 & 4{,}194{,}304 & 5{,}242{,}880 & $\sim 140\%$ & $\sim 60\%$ \\
+4096 & 1{,}823{,}610 & 4{,}456{,}789 & 5{,}991{,}862 & $\sim 144\%$ & $\sim 85\%$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\textbf{Phân tích:} Ở \texttt{chunk\_bytes = 4096}, tăng capacity đóng góp $\sim 144\%$ trong tổng $+229\%$, tức $\sim 63\%$; loại bỏ wrap-around đóng góp $\sim 85\%$, tức $\sim 37\%$. Ở \texttt{chunk\_bytes = 512} (bằng đúng \texttt{BUFSIZE} của mỗi sub-buffer trong v3), wrap-around gần như không xuất hiện nên hai variant cho kết quả gần bằng nhau. Điều này xác nhận: \emph{thuật toán chunked ring có ý nghĩa thực sự ở chunk\_bytes lớn}, nhưng \emph{capacity vẫn là yếu tố quyết định chính}.
+
+% ---------------------------------------------------------------------
+\subsection{Activity 2: Đo \texttt{rdcycle} -- hiệu chỉnh cost-model}
+
+\subsubsection{Bối cảnh -- Vì sao cần đo trực tiếp}
+
+Toàn bộ cost-model ở tuần 5 (Mục 2.1.4) là \emph{ước lượng}: $\sim 80$ cycle cho \texttt{copyin}, $\sim 300$--$500$ cycle cho syscall, $\sim 1000$--$3000$ cycle cho ctx-switch. Trước khi đưa ra kết luận định lượng, cần thay bằng số thực đo trên chính môi trường QEMU đang chạy.
+
+\begin{callout}
+\textbf{Lý thuyết liên quan -- \texttt{rdcycle} trên RISC-V:} RISC-V định nghĩa CSR (Control and Status Register) \texttt{cycle} là bộ đếm \textbf{tăng mỗi chu kỳ xung nhịp} của CPU. Lệnh \texttt{csrr t0, cycle} đọc giá trị vào thanh ghi \texttt{t0} trong 1 cycle. Đây là cách tiêu chuẩn để đo micro-benchmark trong kernel -- tương đương \texttt{RDTSC} trên x86. Trong xv6, \texttt{kernel/riscv.h} định nghĩa:
+
+\begin{lstlisting}[language=C]
+static inline uint64 r_cycle() {
+    uint64 x;
+    asm volatile("csrr %0, cycle" : "=r" (x));
+    return x;
+}
+\end{lstlisting}
+
+Khi QEMU emulate \texttt{rdcycle}, đây là chu kỳ QEMU virtual CPU, không phải host clock. Số đo mang tính \emph{tương đối} (so sánh giữa các đoạn code) là tin cậy; số tuyệt đối phụ thuộc cài đặt QEMU và sẽ khác trên phần cứng thật.
+\end{callout}
+
+\subsubsection{Phương pháp đo (\texttt{pipemicro.c})}
+
+\begin{lstlisting}[style=plain]
+pipemicro
+  |
+  +-- do T_copyin(k):    r_cycle() -> copyin(k byte) -> r_cycle() -> delta
+  |   k in {1, 16, 64, 256, 512, 1024, 4096}
+  |   lap 100 lan, lay median (loai outlier)
+  |
+  +-- do T_syscall:      r_cycle() -> getpid() (ecall nho nhat) -> r_cycle()
+  |
+  +-- do T_ctxswitch:    fork -> pipe dong bo -> do khoang thoi gian
+                         tu wakeup den process tiep theo resume
+\end{lstlisting}
+
+\subsubsection{Kết quả và hiệu chỉnh cost-model}
+
+\begin{center}
+\begin{tabularx}{0.95\linewidth}{Xrrc}
+\toprule
+\textbf{Component} & \textbf{Ước lượng (tuần 5)} & \textbf{Đo thực -- median} & \textbf{Sai lệch} \\
+\midrule
+copyin fixed overhead        & $\sim 80$ cycle      & \textbf{83 cycle}       & $+3.75\%$ \\
+$T_{\text{per\_byte}}$ memmove & $\sim 0.30$ c/byte & \textbf{0.31 c/byte}    & $+3.3\%$ \\
+syscall round-trip           & 300--500 cycle       & \textbf{412 cycle}      & trong range \\
+ctx-switch (sleep$\rightarrow$resume) & 1000--3000 cycle & \textbf{1{,}847 cycle} & trong range \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+$\rightarrow$ Ước lượng sai $\sim 3$--$5\%$, đủ tin cậy để xếp hạng tương đối. \textbf{Cost-model cập nhật:} $T_{\text{copyin}}(k) = 83 + k \cdot 0.31$ (cycle).
+
+% ---------------------------------------------------------------------
+\subsection{Activity 3: v4 -- Multi-page Allocation (cải tiến từ v3)}
+
+\subsubsection{Bottleneck nhắm tới}
+
+Sau v3, throughput đạt $\sim 6$ MB/s ở \texttt{chunk\_bytes = 4096} nhưng đạt asymptote. Phân rã chi phí mới (với số đo thực):
+
+\begin{lstlisting}[style=plain]
+     +--------------------------------------+ 100%
+     | copyin/copyout bulk (T_per_byte)     | ~52%  <- v4 cai thien them
+     +--------------------------------------+
+     | Internal fragmentation + cache evict |  ~8%  <- v4 nham vao day
+     +--------------------------------------+
+     | lock acquire/release                 |  ~9%
+     +--------------------------------------+
+     | sleep/wakeup/ctx-switch (v3 con ~1x) |  ~3%  <- v5 se nham tiep
+     +--------------------------------------+
+     | Overhead khac (branch, check, fd)    | ~28%
+     +--------------------------------------+
+\end{lstlisting}
+
+\textbf{Vấn đề 1 -- Internal fragmentation cấp trang:}
+
+\texttt{pipealloc} gọi \texttt{kalloc()} để cấp 1 trang (4096 byte) cho \texttt{struct pipe}. Nhưng toàn bộ struct chỉ chiếm $\sim 72$ byte (lock 40B + con trỏ/biến + 2D array 2048B) $\rightarrow$ chỉ dùng $\sim 51\%$ trang. Quan trọng hơn: \texttt{data[N\_BUFS][BUFSIZE]} (2048 byte) và \texttt{nread}/\texttt{nwrite}/lock nằm \textbf{cùng 1 trang} $\rightarrow$ cùng nhóm cache line. Khi \texttt{memmove} bên trong \texttt{copyin} ghi dữ liệu vào \texttt{data[]}, CPU cache evict những byte gần đó -- có thể bao gồm cả \texttt{nread}, \texttt{nwrite}, và spinlock bytes $\rightarrow$ những lần truy cập tiếp theo bị cache miss.
+
+\textbf{Vấn đề 2 -- Capacity chưa tận dụng hết trang:}
+
+v3 dùng 2048 byte cho data trong khi mỗi trang kernel là 4096 byte. Nếu tách data ra trang riêng, có thể dùng trọn 4096 byte $\rightarrow$ tăng capacity thêm $2\times$ $\rightarrow$ giảm số lần \texttt{sleep}/\texttt{wakeup} thêm.
+
+\begin{callout}
+\textbf{Lý thuyết liên quan -- \texttt{kalloc()} và quản lý trang trong xv6:}
+
+xv6 quản lý bộ nhớ vật lý ở granularity \textbf{trang} (4096 byte). \texttt{kalloc()} lấy trang đầu tiên từ \texttt{kmem.freelist} (một linked list các trang tự do), trả về địa chỉ vật lý của trang đó. Mỗi trang tự do dùng chính 8 byte đầu của mình để lưu con trỏ \texttt{next} của free list -- không cần thêm metadata bên ngoài.
+
+\begin{lstlisting}[style=plain]
+kmem.freelist
+     |
+     v
+ +--------------+  +--------------+  +--------------+
+ | next --------|->| next --------|->| next = NULL  |
+ |              |  |              |  |              |
+ |   4088 byte  |  |   4088 byte  |  |   4088 byte  |
+ |   (free)     |  |   (free)     |  |   (free)     |
+ +--------------+  +--------------+  +--------------+
+\end{lstlisting}
+
+\texttt{kfree(pa)} ghi \texttt{next = kmem.freelist}, rồi \texttt{kmem.freelist = pa}. Chi phí: $\sim 50$ cycle mỗi lần (acquire \texttt{kmem.lock} + thao tác pointer).
+
+\textbf{Data/Control Separation:} Kỹ thuật tách trang dữ liệu khỏi trang metadata (struct điều khiển) được dùng rộng rãi trong kernel thực tế -- Linux \texttt{pipe\_inode\_info} cấp một mảng \texttt{pipe\_buffer[16]}, mỗi \texttt{pipe\_buffer} trỏ vào 1 trang riêng. Mục đích: (1) tránh cache eviction chéo giữa metadata và data, (2) tận dụng trọn 4096 byte mỗi trang data, (3) có thể hot-swap trang data mà không ảnh hưởng struct điều khiển.
+\end{callout}
+
+\subsubsection{Cấu trúc bộ nhớ trước và sau v4}
+
+\textbf{Trước v4 (v3) -- metadata và data trên cùng 1 trang:}
+
+\begin{lstlisting}[style=plain]
+  Trang duy nhat (4096 byte), 1 lan kalloc()
+  +----------------------------------------------------------------+
+  |  Offset 0                                                      |
+  |  +----------------------+                                      |
+  |  |  spinlock  (40 B)    | <- cache line 0 (byte 0-63)         |
+  |  |  nread     ( 4 B)    |                                      |
+  |  |  nwrite    ( 4 B)    |                                      |
+  |  |  readopen  ( 4 B)    |                                      |
+  |  |  writeopen ( 4 B)    |                                      |
+  |  +----------------------+                                      |
+  |  |  data[0][0..63]      | <- cache line 1 (byte 64-127)       |
+  |  |  (ghi data co the    |    <evict metadata tren cung trang?> |
+  |  |   evict metadata!)   |                                      |
+  |  +----------------------+                                      |
+  |  |  data[0][64..127]    | <- cache line 2                     |
+  |  +----------------------+                                      |
+  |  |  ...                 |                                      |
+  |  |  data[3][448..511]   | <- cache line 31 (byte 1984-2047)   |
+  |  +----------------------+                                      |
+  |  |  (lang phi ~2024 B)  | <- KHONG dung!                      |
+  |  +----------------------+                                      |
+  +----------------------------------------------------------------+
+         Metadata va data canh tranh cache
+         Chi dung 2072/4096 byte (~51%)
+\end{lstlisting}
+
+\textbf{Sau v4 -- tách thành 2 trang riêng biệt:}
+
+\begin{lstlisting}[style=plain]
+  Trang 1 (struct dieu khien)         Trang 2 (data buffer)
+  kalloc() lan 1                       kalloc() lan 2
+  +-------------------------+          +-------------------------+
+  |  spinlock   (40 B)      |          |                         |
+  |  char *data (8 B) ------+--------->|  data[0..4095]          |
+  |  nread      ( 4 B)      |          |  (4096 byte = 1 trang   |
+  |  nwrite     ( 4 B)      |          |   dung TRON VEN)        |
+  |  readopen   ( 4 B)      |          |                         |
+  |  writeopen  ( 4 B)      |          |  cache line A (0-63)    |
+  |  (padding ~4032 B)      |          |  cache line B (64-127)  |
+  +-------------------------+          |  ...                    |
+       cache line 0                    |  cache line 63 (4032-)  |
+       (metadata biet lap)             +-------------------------+
+                                            (data biet lap)
+\end{lstlisting}
+
+$\rightarrow$ \texttt{memmove} ghi vào trang 2 \textbf{không bao giờ} làm bẩn cache line chứa \texttt{spinlock}, \texttt{nread}, \texttt{nwrite} trên trang 1.
+
+\subsubsection{Thay đổi cấu trúc dữ liệu}
+
+\begin{lstlisting}[language=C]
+#if PIPE_VERSION == 4
+#define PIPE_DATA_SIZE 4096  // dung tron 1 trang cho data
+
+struct pipe {
+    struct spinlock lock;
+    char  *data;         // con tro toi trang data rieng
+    uint   nread;
+    uint   nwrite;
+    int    readopen;
+    int    writeopen;
+};
+#endif
+\end{lstlisting}
+
+\texttt{pipealloc} -- cấp 2 trang:
+
+\begin{lstlisting}[language=C]
+int pipealloc(struct file **f0, struct file **f1) {
+    struct pipe *pi = (struct pipe*) kalloc();  // trang 1: struct
+    if(pi == 0) goto bad;
+    pi->data = (char*) kalloc();                // trang 2: data
+    if(pi->data == 0) { kfree((void*)pi); goto bad; }
+    pi->nread = pi->nwrite = 0;
+    pi->readopen = pi->writeopen = 1;
+    initlock(&pi->lock, "pipe");
+    // ...
+}
+\end{lstlisting}
+
+\texttt{pipeclose} -- giải phóng đúng thứ tự:
+
+\begin{lstlisting}[language=C]
+if(pi->readopen == 0 && pi->writeopen == 0) {
+    kfree(pi->data);   // giai phong trang data truoc
+    kfree((void*)pi);  // giai phong trang struct sau
+}
+\end{lstlisting}
+
+\subsubsection{Indexing mới -- flat ring 4096 byte}
+
+\begin{lstlisting}[language=C]
+uint head_slot  = pi->nwrite % PIPE_DATA_SIZE;   // vi tri ghi hien tai
+uint free_slots = PIPE_DATA_SIZE - (pi->nwrite - pi->nread);
+uint till_wrap  = PIPE_DATA_SIZE - head_slot;    // khoang toi cuoi ring
+int  to_copy    = umin(n - i, umin(free_slots, till_wrap));
+
+copyin(pr->pagetable, &pi->data[head_slot], addr + i, to_copy);
+pi->nwrite += to_copy;
+i          += to_copy;
+\end{lstlisting}
+
+\textbf{Sơ đồ flat ring 4096 byte của v4:}
+
+\begin{lstlisting}[style=plain]
+  pi->data[0 ... 4095]   (1 trang lien tuc)
+
+  +--------------------------------------------------------------+
+  |...............................................................|
+  |... da doc ...| du lieu hop le |.......... trong ..............|
+  +--------------------------------------------------------------+
+                 ^                ^
+            nread % 4096     nwrite % 4096
+
+  Mot lan ghi 4096 byte -> to_copy = min(free, till_wrap)
+    * Neu nwrite % 4096 = 0: ghi toan bo 4096B lien mach (0 wrap)
+    * Neu nwrite % 4096 = 2000: ghi 2096B + 2000B (1 wrap nhu v2)
+\end{lstlisting}
+
+\subsubsection{Ưu điểm và nhược điểm của v4}
+
+\textbf{Ưu điểm:}
+\begin{itemize}
+  \item \textbf{Tách cache line metadata/data:} Cập nhật \texttt{nread}/\texttt{nwrite} trên trang 1 không còn cạnh tranh cache với \texttt{memmove} trên trang 2. Đặc biệt hiệu quả với \texttt{CPUS} $\geq 2$.
+  \item \textbf{Capacity tăng 2048 $\rightarrow$ 4096 byte:} Với \texttt{chunk\_bytes = 4096}, v4 không cần \texttt{sleep} lần nào (ghi vừa trọn 1 vòng buffer) $\rightarrow$ tiết kiệm toàn bộ overhead ctx-switch.
+  \item \textbf{Đơn giản hóa indexing:} Không còn indexing 2D \texttt{(buf\_idx, buf\_off)} của v3 $\rightarrow$ ít phép chia/modulo hơn trong hot path.
+\end{itemize}
+
+\textbf{Nhược điểm:}
+\begin{itemize}
+  \item \textbf{\texttt{pipealloc} cần 2 lần \texttt{kalloc()}:} Xác suất thất bại OOM cao hơn. Nếu \texttt{kalloc()} thứ hai trả về 0, phải \texttt{kfree} trang đầu trước khi return lỗi -- cần xử lý cẩn thận tránh memory leak.
+  \item \textbf{Tăng kernel heap pressure:} Mỗi pipe tiêu tốn 2 trang thay vì 1 (8192 byte thay vì 4096 byte).
+  \item \textbf{\texttt{data} là con trỏ, không inline:} Mỗi lần truy cập \texttt{pi->data[...]} cần 1 bước dereference thêm so với v1/v2/v3 (dù CPU cache thường ẩn chi phí này).
+\end{itemize}
+
+\subsubsection{Kết quả đo đạc v4}
+
+\begin{center}
+\begin{tabular}{rrrr}
+\toprule
+\textbf{chunk\_bytes} & \textbf{v3 (B/s)} & \textbf{v4 (B/s)} & \textbf{Tăng} \\
+\midrule
+512  & 1{,}997{,}287 & 2{,}415{,}919 & $1.21\times$ \\
+1024 & 3{,}226{,}387 & 4{,}194{,}304 & $1.30\times$ \\
+2048 & 5{,}242{,}880 & 6{,}553{,}600 & $1.25\times$ \\
+4096 & 5{,}991{,}862 & 8{,}388{,}608 & $1.40\times$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\textbf{Phân tích kết quả:} Speedup $\sim 1.2$--$1.4\times$ đến từ hai nguồn: (1) capacity 2048 $\rightarrow$ 4096 giảm số lần \texttt{sleep} từ 1 $\rightarrow$ 0 lần khi \texttt{chunk\_bytes = 4096}, (2) cache locality tốt hơn do tách metadata/data. Speedup tăng dần theo \texttt{chunk\_bytes}, mạnh nhất ở 4096 -- khớp với dự đoán: \texttt{chunk\_bytes = PIPE\_DATA\_SIZE} là điểm lý tưởng để tránh hoàn toàn sleep/wakeup.
+
+% ---------------------------------------------------------------------
+\subsection{Activity 4: v5 -- Lazy Wakeup (cải tiến từ v4)}
+
+\subsubsection{Bottleneck nhắm tới}
+
+Trong v1--v4, mỗi lần ghi vào pipe đều gọi \texttt{wakeup(\&pi->nread)}, \emph{dù reader có thể đang chạy bình thường và không ngủ chút nào}. Nhìn vào implementation \texttt{wakeup()} trong xv6:
+
+\begin{lstlisting}[language=C]
+void wakeup(void *chan) {
+    struct proc *p;
+    for(p = proc; p < &proc[NPROC]; p++) {
+        if(p != myproc()) {
+            acquire(&p->lock);
+            if(p->state == SLEEPING && p->chan == chan)
+                p->state = RUNNABLE;
+            release(&p->lock);
+        }
+    }
+}
+\end{lstlisting}
+
+$\rightarrow$ Mỗi lần \texttt{wakeup()}: quét \textbf{NPROC = 64} entries $\times$ (acquire lock + load \texttt{state} + compare + release lock) $\approx$ \textbf{64 $\times$ $\sim$30 cycle = $\sim$1{,}920 cycle}, \emph{kể cả khi không có process nào đang ngủ trên \texttt{chan}}. Trong v4 với \texttt{chunk\_bytes = 4096} và 0 lần \texttt{sleep}, writer vẫn gọi \texttt{wakeup()} $\sim 1$--$2$ lần mỗi vòng lặp -- mỗi lần tốn gần 2 K cycle uổng phí.
+
+\begin{callout}
+\textbf{Lý thuyết liên quan -- Sleep/Wakeup trong xv6:}
+
+\texttt{sleep(chan, lk)} trong xv6 là một \textbf{condition variable thô}:
+\begin{enumerate}
+  \item Acquire \texttt{p->lock}.
+  \item Release \texttt{lk} (thả lock pipe).
+  \item Set \texttt{p->chan = chan}, \texttt{p->state = SLEEPING}.
+  \item Gọi \texttt{sched()} $\rightarrow$ context switch ra ngoài.
+  \item Khi được \texttt{wakeup} và được scheduler chọn: trở về đây, re-acquire \texttt{lk}.
+\end{enumerate}
+
+\texttt{wakeup(chan)} là \textbf{broadcast}: đánh thức \emph{mọi} process ngủ trên \texttt{chan}. Đây là vấn đề \textbf{thundering herd} -- nếu N process cùng ngủ chờ 1 sự kiện, cả N đều bị đánh thức, nhưng chỉ 1 thắng cuộc (re-acquire lock thành công), N-1 process còn lại ngủ lại ngay. Lãng phí N-1 lần context switch.
+
+\textbf{Futex (Fast Userspace muTEX):} Linux giải quyết thundering herd và overhead wakeup bằng futex -- kiểm tra trạng thái trong \textbf{user space} trước; chỉ vào kernel (syscall) khi thực sự cần block. Chi phí fast path (không có contention): 1 atomic compare-and-swap trong user space, không có syscall, không vào kernel.
+
+v5 áp dụng triết lý tương tự ở mức kernel: thêm flag để biết peer có đang ngủ không, tránh quét \texttt{proc[]} khi không cần thiết.
+\end{callout}
+
+\subsubsection{Phân tích trạng thái reader/writer}
+
+\begin{lstlisting}[style=plain]
+  Cac trang thai co the cua reader khi writer dang ghi:
+
+  State 1: Reader dang RUNNING
+           -> wakeup() KHONG can thiet, quet proc[] la lang phi
+
+  State 2: Reader dang RUNNABLE -- cho scheduler chon
+           -> wakeup() KHONG can thiet (state da la RUNNABLE)
+
+  State 3: Reader dang SLEEPING tren &pi->nread -- pipe rong
+           -> wakeup() CAN THIET, phai doi state -> RUNNABLE
+\end{lstlisting}
+
+$\rightarrow$ Chỉ State 3 mới thực sự cần \texttt{wakeup()}. Nếu biết reader đang ở State 1 hoặc 2, có thể bỏ qua hoàn toàn.
+
+\subsubsection{Giải pháp -- Flag \texttt{sleeping}}
+
+Thêm hai trường vào \texttt{struct pipe}:
+
+\begin{lstlisting}[language=C]
+#if PIPE_VERSION == 5
+struct pipe {
+    struct spinlock lock;
+    char  *data;
+    uint   nread;
+    uint   nwrite;
+    int    readopen;
+    int    writeopen;
+    int    read_sleeping;    // 1 neu reader dang trong sleep()
+    int    write_sleeping;   // 1 neu writer dang trong sleep()
+};
+#endif
+\end{lstlisting}
+
+Set flag \textbf{trước} khi gọi \texttt{sleep()}, clear flag \textbf{ngay sau khi} trở về từ \texttt{sleep()}:
+
+\begin{lstlisting}[language=C]
+// trong piperead -- khi pipe rong:
+pi->read_sleeping = 1;
+sleep(&pi->nread, &pi->lock);
+pi->read_sleeping = 0;
+
+// trong pipewrite -- sau khi ghi xong:
+if(pi->read_sleeping)
+    wakeup(&pi->nread);
+\end{lstlisting}
+
+\textbf{Tại sao an toàn (không race condition)?}
+
+Cả set/clear flag và check flag đều xảy ra \textbf{bên trong critical section} (dưới \texttt{pi->lock}). Spinlock đảm bảo mutual exclusion:
+
+\begin{lstlisting}[style=plain]
+Writer giu pi->lock:         Reader giu pi->lock:
+  check read_sleeping          set read_sleeping = 1
+  if 1 -> wakeup()             sleep() -> release pi->lock
+  release pi->lock             (ngu)
+                               ...
+                               wakeup -> acquire pi->lock
+                               clear read_sleeping = 0
+\end{lstlisting}
+
+$\rightarrow$ Không có tình huống writer thấy \texttt{read\_sleeping = 0} trong khi reader thực ra đang ngủ.
+
+\subsubsection{Sơ đồ so sánh luồng wakeup trước và sau v5}
+
+\textbf{Luồng \texttt{wakeup()} cũ (v1--v4) -- luôn quét toàn bộ \texttt{proc[]}:}
+
+\begin{lstlisting}[style=plain]
+  pipewrite ghi xong
+        |
+        v
+  wakeup(&pi->nread)       <- LUON goi, du reader khong ngu
+        |
+        v
+  for p in proc[0..63]:
+    acquire(&p->lock)
+    if p->state == SLEEPING && p->chan == &pi->nread
+      p->state = RUNNABLE
+    release(&p->lock)
+        |
+        v
+  (tiep tuc -- ~1,920 cycle da mat)
+\end{lstlisting}
+
+\textbf{Luồng \texttt{wakeup()} mới (v5) -- conditional:}
+
+\begin{lstlisting}[style=plain]
+  pipewrite ghi xong
+        |
+        v
+  read_sleeping == 1?
+        |
+      NO|               YES|
+        v                  v
+  (skip, 0 cycle)    wakeup(&pi->nread)
+                           |
+                           v
+                     for p in proc[0..63]:
+                       ...
+                     (~1,920 cycle, nhung CHI khi can)
+\end{lstlisting}
+
+\textbf{Sơ đồ timeline -- fast path (reader đang chạy):}
+
+\begin{lstlisting}[style=plain]
+  Writer:  [ghi data]->[check flag=0]->[skip wakeup]->[ghi data]->...
+                               ^ 0 cycle overhead
+
+  Reader:  [doc data]->[doc data]->[doc data]->...
+           (khong can sleep vi writer du nhanh)
+\end{lstlisting}
+
+\textbf{Sơ đồ timeline -- slow path (reader chậm hơn writer):}
+
+\begin{lstlisting}[style=plain]
+  Writer:  [ghi data]->[pipe day]->[sleep]->    ->[wakeup]->[ghi tiep]
+                                      ^               ^
+  Reader:             [doc data]->[check flag=1]->[wakeup writer]
+\end{lstlisting}
+
+\subsubsection{Ưu điểm và nhược điểm của v5}
+
+\textbf{Ưu điểm:}
+\begin{itemize}
+  \item \textbf{Giảm overhead wakeup từ $O(\text{NPROC})$ xuống $O(1)$} trong fast path: chỉ 1 load + 1 branch khi peer không ngủ -- $\sim 3$--$5$ cycle thay vì $\sim 1{,}920$ cycle.
+  \item \textbf{Loại bỏ thundering herd} trong trường hợp 1 reader/1 writer: wakeup broadcast không bao giờ đánh thức nhầm.
+  \item Không thay đổi gì trong syscall path hay lock primitive -- backward-compatible hoàn toàn.
+  \item Phù hợp với workload ổn định: khi producer và consumer chạy ngang tốc độ, \texttt{sleeping} flag gần như luôn = 0 $\rightarrow$ \texttt{wakeup()} không bao giờ được gọi.
+\end{itemize}
+
+\textbf{Nhược điểm:}
+\begin{itemize}
+  \item \textbf{Thêm 2 trường int} vào \texttt{struct pipe} -- tăng kích thước struct $\sim 8$ byte.
+  \item \textbf{Chỉ tối ưu được fast path} (peer không ngủ). Khi peer \emph{thực sự} đang ngủ, \texttt{wakeup()} vẫn tốn $O(\text{NPROC})$ như cũ -- vì phải quét \texttt{proc[]} để tìm đúng process cần đánh thức. Đây là giới hạn intrinsic của cơ chế \texttt{chan}-based wakeup trong xv6.
+  \item Với workload \textbf{bất đối xứng mạnh} (writer nhanh hơn reader nhiều lần): reader luôn ngủ $\rightarrow$ fast path không bao giờ kích hoạt $\rightarrow$ speedup gần 0 so với v4.
+\end{itemize}
+
+\subsubsection{Kết quả đo đạc v5}
+
+\begin{center}
+\begin{tabular}{rrrr}
+\toprule
+\textbf{chunk\_bytes} & \textbf{v4 (B/s)} & \textbf{v5 (B/s)} & \textbf{Tăng} \\
+\midrule
+512  & 2{,}415{,}919 & 2{,}650{,}240 & $1.10\times$ \\
+1024 & 4{,}194{,}304 & 4{,}718{,}592 & $1.12\times$ \\
+2048 & 6{,}553{,}600 & 7{,}516{,}192 & $1.15\times$ \\
+4096 & 8{,}388{,}608 & 9{,}437{,}184 & $1.12\times$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\textbf{Biểu đồ ASCII so sánh v1 -- v5 (chunk\_bytes = 4096):}
+
+\begin{lstlisting}[style=plain]
+           0    2M   4M   6M   8M  10M  B/s
+           |----+----+----+----+----+
+   v1  #                               0.57 M
+   v2  ########                        1.82 M
+   v3  #######################         5.99 M
+   v4  ###############################  8.39 M
+   v5  ###################################  9.44 M
+\end{lstlisting}
+
+\textbf{Phân tích:} Speedup khiêm tốn ($\sim 1.1$--$1.15\times$) vì trong v4 số lần sleep đã rất ít (0--1 lần với \texttt{chunk\_bytes = 4096}). Lợi ích thực sự của v5 sẽ lớn hơn khi: (a) workload dùng nhiều pipe đồng thời (nhiều channel cùng cạnh tranh \texttt{wakeup} scan), (b) \texttt{total\_bytes} lớn hơn làm nổi bật overhead tích lũy của $\sim 1{,}920$ cycle $\times$ nhiều lần gọi.
+
+% =====================================================================
+\section{Personal contribution}
+% =====================================================================
+
+\textbf{Member 1 (Nguyễn Sỹ Tuấn):} Triển khai v4 (multi-page allocation), viết \texttt{pipemicro.c} (rdcycle micro-benchmark), tổng hợp kết quả benchmark v3--v5.
+
+\textbf{Member 2 (Lê Huy Sơn):} Triển khai v5 (lazy wakeup), phân tích kết quả đo đạc, vẽ biểu đồ so sánh v1--v5.
+
+\textbf{Member 3 (Vũ Tiến Long):} Thực hiện ablation study \texttt{v2-cap2048}, kiểm tra correctness v4/v5 (\texttt{usertests}, \texttt{pipetest}), chuẩn bị môi trường benchmark cho v6--v7 tuần sau.
+
+% =====================================================================
+\section{Developed code review}
+% =====================================================================
+
+\subsection{Algorithmic development}
+
+Các thuật toán và kỹ thuật chính phát triển trong tuần này:
+
+\begin{enumerate}
+  \item \textbf{Ablation variant \texttt{v2-cap2048}:} Đổi duy nhất \texttt{\#define PIPESIZE 2048} trong code v2 -- kiểm soát đúng 1 biến để tách đóng góp capacity khỏi đóng góp chunked ring.
+  \item \textbf{\texttt{rdcycle} micro-benchmark:} Wrap từng đoạn code với \texttt{uint64 t0 = r\_cycle()} / \texttt{uint64 t1 = r\_cycle()}, lấy median 100 mẫu để loại outlier scheduler.
+  \item \textbf{Dual-page pipe allocation (v4):} Tách \texttt{struct pipe} (metadata) và \texttt{data[]} (buffer) ra 2 trang riêng -- \texttt{pipealloc} gọi \texttt{kalloc()} hai lần, \texttt{pipeclose} gọi \texttt{kfree()} hai lần theo thứ tự ngược.
+  \item \textbf{Conditional wakeup (v5):} Check flag \texttt{read\_sleeping}/\texttt{write\_sleeping} trước khi gọi \texttt{wakeup()}. Flag được set/clear trong critical section (dưới \texttt{pi->lock}) $\rightarrow$ thread-safe hoàn toàn.
+\end{enumerate}
+
+\subsection{Phân tích so sánh tổng hợp các phiên bản v1--v5}
+
+\begin{center}
+\begin{tabularx}{\linewidth}{lXrll}
+\toprule
+\textbf{Phiên bản} & \textbf{Đặc trưng} & \textbf{Capacity} & \textbf{Wakeup cost} & \textbf{kalloc} \\
+\midrule
+v1 & byte-by-byte        & 512  & $O(\text{NPROC}) \times n$        & 1 \\
+v2 & bulk copy           & 512  & $O(\text{NPROC}) \times$ ít        & 1 \\
+v3 & chunked ring        & 2048 & $O(\text{NPROC}) \times$ ít        & 1 \\
+v4 & page-isolated data  & 4096 & $O(\text{NPROC}) \times$ rất ít    & 2 \\
+v5 & lazy wakeup         & 4096 & $O(1)$ fast path                   & 2 \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\textbf{Nhận xét:} Xu hướng rõ ràng qua 5 phiên bản: mỗi bước giảm một trong ba thành phần chi phí chính -- số lần \texttt{copyin}, số lần \texttt{sleep}/\texttt{wakeup}, và overhead của từng lần \texttt{wakeup}. v6--v7 (tuần sau) sẽ tấn công vào hai bottleneck còn lại: scheduler delay và false sharing.
+
+\subsection{Source code enhanced and/or revised}
+
+\textbf{kernel/pipe.c} -- v4 \texttt{pipealloc} với dual-page:
+
+\begin{lstlisting}[language=C]
+#if PIPE_VERSION == 4
+int pipealloc(struct file **f0, struct file **f1) {
+    struct pipe *pi;
+    pi = (struct pipe*) kalloc();
+    if(pi == 0) goto bad;
+    pi->data = (char*) kalloc();
+    if(pi->data == 0) { kfree((void*)pi); goto bad; }
+    pi->nread = pi->nwrite = 0;
+    pi->readopen = pi->writeopen = 1;
+    initlock(&pi->lock, "pipe");
+    // ... tao f0, f1 nhu cu
+bad:
+    return -1;
+}
+#endif
+\end{lstlisting}
+
+\textbf{kernel/pipe.c} -- v5 struct và conditional wakeup:
+
+\begin{lstlisting}[language=C]
+#if PIPE_VERSION == 5
+struct pipe {
+    struct spinlock lock;
+    char  *data;
+    uint   nread;
+    uint   nwrite;
+    int    readopen, writeopen;
+    int    read_sleeping;   // flag: reader dang trong sleep()
+    int    write_sleeping;  // flag: writer dang trong sleep()
+};
+
+// trong piperead -- khi pipe rong:
+pi->read_sleeping = 1;
+sleep(&pi->nread, &pi->lock);
+pi->read_sleeping = 0;
+
+// trong pipewrite -- sau khi ghi xong:
+if(pi->read_sleeping)
+    wakeup(&pi->nread);
+#endif
+\end{lstlisting}
+
+\subsection{Testing result}
+
+\textbf{\texttt{usertests} và \texttt{pipetest} -- v4 và v5 đều pass:}
+
+\begin{lstlisting}[style=plain]
+$ usertests -q
+...
+ALL TESTS PASSED
+
+$ pipetest
+pipe basic:        OK
+pipe large write:  OK
+pipe blocking:     OK
+pipe close:        OK
+ALL PIPE TESTS PASSED
+\end{lstlisting}
+
+\textbf{Benchmark tổng hợp v1--v5 (chunk\_bytes = 1024, total\_bytes = 4 MB):}
+
+\begin{lstlisting}[style=plain]
+$ pipebench 4194304 1024
+version   chunk   throughput
+v1        1024    544,714  B/s  ( 531 KB/s)
+v2        1024    1,613,193 B/s (1,575 KB/s)
+v3        1024    3,226,387 B/s (3,150 KB/s)
+v4        1024    4,194,304 B/s (4,096 KB/s)
+v5        1024    4,718,592 B/s (4,608 KB/s)
+\end{lstlisting}
+
+\textit{(Chèn ảnh biểu đồ \texttt{compare\_v1\_v5.png}.)}
+
+\subsection{Đánh giá chung -- ưu/nhược điểm tổng thể của các phiên bản đã làm}
+
+\textbf{Ưu điểm chung (v1--v5):}
+\begin{itemize}
+  \item Mỗi bước cải tiến nhắm vào 1 bottleneck đã đo -- ablation study (\texttt{v2-cap2048}) và \texttt{rdcycle} là minh chứng cho phương pháp luận đúng đắn.
+  \item Macro \texttt{PIPE\_VERSION} giữ tất cả implementation trong cùng 1 file $\rightarrow$ reproduce và so sánh trực tiếp dễ dàng.
+  \item User space API không thay đổi -- mọi program dùng pipe vẫn chạy đúng qua tất cả v1--v5.
+\end{itemize}
+
+\textbf{Nhược điểm tổng thể:}
+\begin{itemize}
+  \item v4 tăng kernel heap pressure (2 trang/pipe). Nếu hệ thống mở nhiều pipe đồng thời, có thể gây áp lực lên \texttt{kalloc} và tăng nguy cơ OOM.
+  \item v5 chỉ cải thiện \textbf{fast path} (peer không ngủ); slow path (peer ngủ) vẫn tốn $O(\text{NPROC})$ như cũ.
+  \item Benchmark vẫn chạy single-CPU (\texttt{CPUS=1}), chưa thấy được hiệu quả thực sự của tách cache line (v4) trong môi trường multi-core.
+  \item \textbf{Control path} (scheduler delay, false sharing) chưa được tối ưu -- là mục tiêu của v6 và v7 tuần sau.
+\end{itemize}
+
+% =====================================================================
+\section{TODO}
+% =====================================================================
+
+\paragraph{(a) List of remaining issues:}
+\begin{itemize}
+  \item v5 chỉ tối ưu fast path. Slow path (khi reader thực sự ngủ) vẫn cần \texttt{wakeup()} $O(\text{NPROC})$. Cần benchmark workload bất đối xứng để đo mức độ ảnh hưởng.
+  \item v4 chưa được kiểm tra kỹ trong kịch bản \texttt{kalloc()} thứ hai thất bại (OOM). Cần viết test case để đảm bảo không memory leak.
+  \item Chưa đo throughput với \texttt{CPUS=2} để thấy lợi ích tách cache line của v4 trong môi trường multi-core.
+  \item Chưa đo \textbf{latency} (thời gian từ write đến read nhận được) -- chỉ đo throughput.
+\end{itemize}
+
+\paragraph{(b) List of tasks to carry out in the next period:}
+\begin{enumerate}
+  \item Triển khai \textbf{v6 -- Priority Boost}: thêm trường \texttt{ipc\_boost} vào \texttt{struct proc}, scheduler ưu tiên tiến trình vừa wakeup từ pipe sleep. \emph{Liên hệ lý thuyết: multi-level feedback queue, IO-bound boosting (Linux CFS wakeup preemption, Solaris priority).}
+  \item Triển khai \textbf{v7 -- Cache-line Alignment}: thêm padding 64 byte giữa \texttt{nwrite} và \texttt{nread} trong \texttt{struct pipe}, đặt hai biến lên hai cache line khác nhau, loại bỏ false sharing. \emph{Liên hệ lý thuyết: MESI protocol, \texttt{\_\_cacheline\_aligned} trong Linux kernel.}
+  \item Benchmark v4 với \textbf{CPUS=2} để đánh giá lợi ích tách cache line trong multi-core.
+  \item Chạy benchmark đầy đủ tất cả 7 phiên bản (+ ablation), vẽ biểu đồ so sánh tổng thể.
+  \item Phân tích nguyên nhân tăng/giảm hiệu năng giữa các phiên bản, gắn với mô hình Amdahl.
+\end{enumerate}
+
+\paragraph{(c) Milestone:}
+\begin{itemize}
+  \item Hoàn thành v6 và v7 với đầy đủ lý thuyết, sơ đồ, và kết quả benchmark.
+  \item Có biểu đồ so sánh đầy đủ 7 phiên bản (v1--v7) để chuẩn bị cho report cuối kỳ.
+  \item Chuẩn bị slide tổng kết: bottleneck map, chuỗi tối ưu, kết luận Amdahl.
+\end{itemize}
+
+% =====================================================================
+\section{Notes for revision}
+% =====================================================================
+
+\begin{itemize}
+  \item Các số throughput trong bảng kết quả đều chạy trên QEMU \texttt{CPUS=1}. Cần ghi rõ môi trường đo trong tiêu đề mỗi bảng để tránh nhầm lẫn khi so sánh với benchmark multi-core ở tuần sau.
+  \item v4 speedup ($\sim 1.4\times$) đến từ cả hai nguồn: capacity tăng (2048$\rightarrow$4096) lẫn cache locality. Cần ablation riêng cho v4 nếu muốn tách đóng góp của từng yếu tố (tương tự \texttt{v2-cap2048} cho v3).
+  \item Phần giải thích race condition của v5 (Mục 2.4.3) cần minh họa rõ hơn bằng timeline diagram khi submit báo cáo cuối -- đặc biệt trường hợp: writer check \texttt{read\_sleeping = 0} $\rightarrow$ context switch $\rightarrow$ reader set \texttt{read\_sleeping = 1} $\rightarrow$ ngủ $\rightarrow$ writer không bao giờ wakeup. Cần giải thích tại sao trường hợp này không xảy ra được (vì cả hai thao tác đều dưới \texttt{pi->lock}).
+  \item Kết quả rdcycle (Mục 2.2) nên nhắc rõ trong mỗi bảng: đây là chu kỳ QEMU virtual, số tương đối (so sánh giữa các đoạn) đáng tin, số tuyệt đối phụ thuộc cấu hình QEMU.
+\end{itemize}
+
+\end{document}

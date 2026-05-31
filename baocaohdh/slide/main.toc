@@ -1,0 +1,4 @@
+\babel@toc {vietnamese}{}\relax 
+\beamer@sectionintoc {1}{Giới thiệu}{4}{0}{1}
+\beamer@sectionintoc {2}{Các phiên bản tối ưu}{9}{0}{2}
+\beamer@sectionintoc {3}{Kết quả thực nghiệm}{17}{0}{3}

@@ -1,0 +1,815 @@
+% =====================================================================
+%  Progress Report -- Week 5
+%  Optimize pipe implementation to improve IPC throughput (xv6-riscv)
+%
+%  Compile with:  xelatex report_week5.tex
+%  Requires fonts: DejaVu Serif / DejaVu Sans Mono (Vietnamese + box chars)
+% =====================================================================
+\documentclass[11pt,a4paper]{article}
+
+% ----- Engine & language -----
+\usepackage{fontspec}
+\setmainfont{DejaVu Serif}
+\setsansfont{DejaVu Sans}
+\setmonofont{DejaVu Sans Mono}[Scale=0.82]
+
+% ----- Layout -----
+\usepackage[a4paper,margin=2.2cm]{geometry}
+\usepackage{parskip}
+\usepackage{microtype}
+\usepackage{titlesec}
+\titleformat{\section}{\large\bfseries}{\thesection}{1em}{}[\titlerule]
+\titleformat{\subsection}{\normalsize\bfseries}{\thesubsection}{1em}{}
+\titleformat{\subsubsection}{\normalsize\itshape}{\thesubsubsection}{1em}{}
+
+% ----- Tables, lists, math -----
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{array}
+\usepackage{enumitem}
+\setlist{itemsep=2pt, topsep=4pt}
+\usepackage{amsmath}
+\usepackage{float}
+\usepackage{caption}
+
+% ----- Code & verbatim -----
+\usepackage{listings}
+\usepackage{xcolor}
+\definecolor{codebg}{RGB}{246,246,246}
+\definecolor{codekw}{RGB}{30,90,180}
+\definecolor{codecm}{RGB}{120,120,120}
+\definecolor{codestr}{RGB}{0,128,0}
+\lstdefinestyle{cstyle}{
+  basicstyle=\ttfamily\footnotesize,
+  backgroundcolor=\color{codebg},
+  keywordstyle=\color{codekw}\bfseries,
+  commentstyle=\color{codecm}\itshape,
+  stringstyle=\color{codestr},
+  numbers=none,
+  frame=single,
+  rulecolor=\color{black!20},
+  breaklines=true,
+  showstringspaces=false,
+  language=C,
+  literate={→}{{$\rightarrow$}}1 {←}{{$\leftarrow$}}1 {↔}{{$\leftrightarrow$}}1
+           {≈}{{$\approx$}}1 {·}{{$\cdot$}}1 {≤}{{$\leq$}}1 {≥}{{$\geq$}}1
+           {×}{{$\times$}}1
+}
+\lstset{style=cstyle}
+
+% Plain ASCII / diagram listing (no syntax highlighting)
+\lstdefinestyle{plain}{
+  basicstyle=\ttfamily\footnotesize,
+  backgroundcolor=\color{codebg},
+  keywords={},
+  language={},
+  numbers=none,
+  frame=single,
+  rulecolor=\color{black!20},
+  breaklines=false,
+  showstringspaces=false,
+  upquote=true,
+}
+
+% ----- Callout boxes -----
+\usepackage{mdframed}
+\newmdenv[
+  linecolor=blue!55, linewidth=2pt,
+  topline=false, bottomline=false, rightline=false,
+  innerleftmargin=10pt, innerrightmargin=8pt,
+  innertopmargin=6pt, innerbottommargin=6pt,
+  backgroundcolor=blue!3
+]{callout}
+
+\newmdenv[
+  linecolor=orange!75, linewidth=2pt,
+  topline=false, bottomline=false, rightline=false,
+  innerleftmargin=10pt, innerrightmargin=8pt,
+  innertopmargin=6pt, innerbottommargin=6pt,
+  backgroundcolor=orange!4
+]{warnbox}
+
+% ----- Hyperref last -----
+\usepackage[hidelinks]{hyperref}
+
+% ----- Title -----
+\title{\textbf{Progress Report -- Week 5}\\[3pt]
+\large Học phần: Operating Systems [Multimedia] -- 20252}
+\author{Nguyễn Sỹ Tuấn \and Lê Huy Sơn \and Vũ Tiến Long}
+\date{Giai đoạn báo cáo: 25/4/2026 -- 1/5/2026}
+
+\begin{document}
+\maketitle
+
+\begin{tabular}{@{}ll@{}}
+\textbf{Mã số dự án:} & 25236 \\
+\textbf{Tên dự án:} & Optimize pipe implementation to improve IPC throughput \\
+\textbf{Thiết kế:} & Link Figma \\
+\textbf{Quản lý tác vụ:} & Link JIRA \\
+\textbf{Thành viên:} & Nguyễn Sỹ Tuấn, Lê Huy Sơn, Vũ Tiến Long \\
+\end{tabular}
+
+\hrulefill
+
+% =====================================================================
+\section{Summary of latest progress}
+% =====================================================================
+
+\textit{(Viết khoảng 200--300 từ để tóm tắt quá trình thực hiện trong giai đoạn này và tổng mức độ hoàn thành hiện tại.)}
+
+Như đã nói ở tuần trước, các task phải thực hiện trong tuần này là:
+
+\begin{enumerate}
+  \item Viết các task optimized cho pipe.
+\end{enumerate}
+
+Trong tuần này, chúng tôi đã triển khai hai phiên bản tối ưu đầu tiên cho cơ chế pipe trong xv6 (v2, v3), chạy lại đầy đủ baseline v1 để có dữ liệu so sánh đáng tin cậy, và xây dựng chương trình đo hiệu năng tổng hợp (\texttt{pipebench}). Cụ thể:
+
+\begin{itemize}
+  \item \textbf{v1 -- Baseline (re-run):} Chạy lại đầy đủ phiên bản gốc trên cùng môi trường (cùng \texttt{CPUS=1}, cùng \texttt{total\_bytes}, cùng dải \texttt{chunk\_bytes}) để lấy số liệu tham chiếu. Đây là cơ sở để mọi tỷ lệ ``tăng X lần'' của v2/v3 có ý nghĩa định lượng, không chỉ định tính.
+  \item \textbf{v2 -- Bulk Copy:} Thay thế vòng lặp sao chép từng byte (\texttt{copyin(..., 1)}) bằng một lần sao chép khối lớn (\texttt{copyin(..., N)}). Kết quả: throughput tăng $\sim 3\times$ so với v1 ở \texttt{chunk\_bytes = 512}. \emph{Liên hệ lý thuyết:} giảm số lần vượt ranh giới user/kernel -- từ $O(n)$ xuống $O(n / \text{till\_wrap})$.
+  \item \textbf{v3 -- Ring of Buffers:} Thay đổi cấu trúc bộ đệm từ mảng 1 chiều \texttt{char data[PIPESIZE]} (512 byte) thành mảng 2 chiều \texttt{char data[N\_BUFS][BUFSIZE]} (\texttt{N\_BUFS=4}, \texttt{BUFSIZE=512}, tổng 2048 byte). Cải tiến này có \emph{hai} tác dụng cộng dồn: (a) loại bỏ wrap-around trong một sub-buffer và (b) tăng capacity $4\times$ $\rightarrow$ giảm số lần pipe đầy/sleep. Throughput tăng $\sim 3.5\times$ so với v2 ở \texttt{chunk\_bytes = 2048}; tỷ lệ đóng góp của (a) vs (b) sẽ được tách bằng thí nghiệm \texttt{v2-cap2048} ở tuần sau.
+  \item \textbf{pipebench.c:} Viết chương trình quét (sweep) qua nhiều giá trị \texttt{chunk\_bytes} (64, 128, 256, 512, 1024, 2048, 4096) để đo throughput theo từng phiên bản, xuất kết quả ra file để vẽ biểu đồ.
+\end{itemize}
+
+\textbf{v4 -- Multi-page Allocation} được dời sang tuần sau (kết hợp với v5--v7) để có thời gian phân tích kỹ hơn về bố cục bộ nhớ và đảm bảo so sánh capacity công bằng giữa các phiên bản.
+
+Tổng mức độ hoàn thành hiện tại: $\sim 43\%$ (3/7 phiên bản, tính cả v1 baseline đã đo lại).
+
+% =====================================================================
+\section{Review of technical activities}
+% =====================================================================
+
+\subsection{Activity 1: Phân tích baseline v1 -- Các yếu tố ảnh hưởng đến IPC throughput của pipe}
+
+\begin{callout}
+\textbf{Vì sao v1 đáng được phân tích kỹ trước khi viết bất kỳ optimize nào:} Throughput pipe không chỉ phụ thuộc vào \texttt{kernel/pipe.c}. Nó là tổng hợp của \emph{cả hệ điều hành}: syscall, file descriptor layer, copy bộ nhớ, page table, TLB, cache, lock, sleep/wakeup, scheduler. Phân tích từng tầng giúp xác định \emph{đúng} bottleneck $\rightarrow$ mỗi version sau (v2, v3, $\ldots$) chỉ nhắm vào \emph{một} bottleneck đã được đo, tránh ``tối ưu mò''.
+\end{callout}
+
+\subsubsection{Bối cảnh -- Pipe là gì trong xv6}
+
+Pipe là một dạng IPC unidirectional, half-duplex, hiện thực dưới dạng \emph{bounded buffer} trong kernel -- minh họa kinh điển của \textbf{producer-consumer problem} (Dijkstra, 1965). Cặp \texttt{sleep}/\texttt{wakeup} (cùng spinlock \texttt{pi->lock}) đảm bảo synchronization mà không busy-waiting.
+
+\begin{lstlisting}[style=plain]
+        +----------+         pipe (kernel)         +----------+
+        | producer | --write--> [ ring buffer ] --read--> | consumer |
+        +----------+         |  spinlock |         +----------+
+                             |  cond var |
+                             +-----------+
+\end{lstlisting}
+
+\subsubsection{Đường đi của một lần \texttt{write} / \texttt{read} qua pipe}
+
+User process \textbf{không gọi trực tiếp} \texttt{pipewrite()}/\texttt{piperead()}. Mỗi lần ghi/đọc đi qua một chuỗi tầng kernel:
+
+\begin{lstlisting}[style=plain]
+  write(fd, buf, n)                         read(fd, buf, n)
+       |                                           |
+       | ecall  <- user->supervisor mode           | ecall
+       v                                           v
+  uservec -> usertrap                         uservec -> usertrap
+       |                                           |
+       v                                           v
+  syscall()  ->  sys_write()                 syscall()  ->  sys_read()
+       |                                           |
+       v                                           v
+  argfd() -> filewrite()                      argfd() -> fileread()
+       |                                           |
+       v                                           v
+  pipewrite()                                  piperead()
+       |  acquire(&pi->lock)                       |  acquire(&pi->lock)
+       |  loop n lan:                              |  loop n lan:
+       |    if full -> sleep(&pi->nwrite)          |    if empty -> sleep(&pi->nread)
+       |    copyin(user 1 byte -> kernel ring)     |    copyout(kernel ring -> user 1 byte)
+       |    wakeup(&pi->nread)                     |    wakeup(&pi->nwrite)
+       |  release                                  |  release
+       |                                           |
+       v                                           v
+       \-- usertrapret -> sret -> user mode -------/
+\end{lstlisting}
+
+$\rightarrow$ Throughput không chỉ phụ thuộc vào \texttt{kernel/pipe.c}, mà phụ thuộc vào \textbf{toàn bộ chuỗi}: syscall, file layer, copy memory, page table, TLB, cache, lock, sleep/wakeup, scheduler.
+
+\subsubsection{Mười hai tầng chi phí ảnh hưởng đến throughput}
+
+\paragraph{(1) Syscall layer -- vượt biên user $\leftrightarrow$ kernel.}
+Mỗi \texttt{write(fd, buf, n)} phải:
+
+\begin{enumerate}
+  \item Thực thi \texttt{ecall} $\rightarrow$ CPU trap sang \textbf{supervisor mode}.
+  \item \texttt{uservec} lưu toàn bộ register vào trapframe, đổi \texttt{satp} sang kernel pagetable $\rightarrow$ \textbf{TLB flush}.
+  \item \texttt{usertrap} xử lý $\rightarrow$ \texttt{syscall()} đọc \texttt{a7} (số syscall), dispatch.
+  \item \texttt{sys\_write()} lấy \& validate tham số (\texttt{argfd}, \texttt{argaddr}, \texttt{argint}).
+  \item Khi xong: \texttt{usertrapret} khôi phục register, \texttt{sret} quay về user mode.
+\end{enumerate}
+
+Chi phí: \textbf{$\sim 300$--$500$ cycle / syscall} trên QEMU \texttt{rv64gc}, không đổi theo $n$.
+
+$\rightarrow$ \textbf{Hệ quả batching:} Truyền 1000 byte bằng 1000 lần \texttt{write(fd,\&c,1)} mất $\sim 300$--$500$ K cycle chỉ riêng cho vào/ra kernel; cùng 1000 byte truyền bằng 1 lần \texttt{write(fd,buf,1000)} chỉ tốn $\sim 300$--$500$ cycle.
+
+\paragraph{(2) File descriptor \& file layer.}
+Trong \texttt{sys\_write} $\rightarrow$ \texttt{argfd()} lấy \texttt{struct file *} từ \texttt{myproc()->ofile[fd]}, kiểm tra \texttt{fd} hợp lệ, file còn mở, có \texttt{f->writable}, loại file (\texttt{FD\_PIPE} vs \texttt{FD\_INODE}, \texttt{FD\_DEVICE}). Sau đó \texttt{filewrite()} dispatch theo type $\rightarrow$ \texttt{pipewrite(f->pipe, ...)}. Chi phí: \textbf{$\sim 50$--$100$ cycle / lần}.
+
+\paragraph{(3) Pipe buffer -- \texttt{PIPESIZE = 512}.}
+
+\begin{lstlisting}[language=C]
+#define PIPESIZE 512
+struct pipe {
+    struct spinlock lock;
+    char  data[PIPESIZE];
+    uint  nread;     // so byte da doc tong cong
+    uint  nwrite;    // so byte da ghi tong cong
+    int   readopen, writeopen;
+};
+\end{lstlisting}
+
+Pipe \textbf{đầy} khi \texttt{nwrite == nread + PIPESIZE}. \textbf{Rỗng} khi \texttt{nread == nwrite}.
+
+$\rightarrow$ \textbf{Hệ quả khi PIPESIZE chỉ 512:} Một lần \texttt{write(buf, 4096)} phải chia làm \textbf{8 đợt}, giữa các đợt writer phải \texttt{sleep} chờ reader giải phóng chỗ $\rightarrow$ 7 cặp sleep/wakeup + 7 lần context switch chỉ để truyền 4096 byte.
+
+\paragraph{(4) \texttt{copyin}/\texttt{copyout} \& page table walk Sv39.}
+Vì kernel chạy với pagetable khác user, không thể \texttt{*p = ...} trực tiếp lên địa chỉ user. Phải dịch VA$\rightarrow$PA qua \textbf{page table 3 cấp} (RISC-V Sv39, 39-bit VA chia 9+9+9+12):
+
+\begin{lstlisting}[style=plain]
+VA:  | 9b L2 | 9b L1 | 9b L0 | 12b offset |
+       |       |       |
+       v       v       v
+   root PT -> mid PT -> leaf PT -> PA
+\end{lstlisting}
+
+$\rightarrow$ 3 lần đọc bộ nhớ chỉ để biết một byte user nằm ở đâu trong RAM. Mỗi PTE 8 byte (PPN + cờ V/R/W/X/U).
+
+\textbf{Chi phí một lần \texttt{copyin(...)}} (đã ở trong kernel rồi, không tính bước trap):
+
+\begin{center}
+\begin{tabularx}{0.95\linewidth}{Xc}
+\toprule
+\textbf{Hợp phần} & \textbf{Cycle (ước lượng mô hình)} \\
+\midrule
+Kiểm tra biên user & $\sim 5$ \\
+\texttt{walkaddr()} -- \textbf{software walk} đọc 3 PTE từ RAM (qua kernel direct map) & $\sim 30$--$60$ \\
+Tính \texttt{kernel\_va = PA + KERNBASE-offset} & $\sim 5$ \\
+Setup \texttt{memmove} (lưu thanh ghi, branch) & $\sim 10$ \\
+\midrule
+\textbf{Tổng ``fixed overhead''} & \textbf{$\sim 80$ cycle} \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\begin{warnbox}
+\textbf{Lưu ý quan trọng về \texttt{walkaddr} vs hardware TLB:} RISC-V có hardware page-table walker thật, nhưng xv6 \textbf{không dựa vào nó khi \texttt{copyin}/\texttt{copyout}}. Lý do: kernel đang chạy với \texttt{satp} của \emph{kernel pagetable}, còn buffer cần đọc nằm trong \emph{user pagetable}. Vì vậy xv6 phải walk \emph{bằng phần mềm} qua \texttt{walk()} $\rightarrow$ 3 lần đọc bộ nhớ trực tiếp các PTE.
+
+Hardware TLB \emph{vẫn} ảnh hưởng -- nhưng ở chỗ khác: (a) \texttt{memmove} truy cập kernel direct map, đi qua hardware TLB; (b) mỗi context switch đổi \texttt{satp} làm cũ TLB. Không nên nói ``fixed overhead 80 cycle là do TLB miss''.
+\end{warnbox}
+
+Phần biến thiên: \texttt{memmove} $\sim 0.3$--$1$ cycle/byte. Mô hình:
+
+\begin{lstlisting}[style=plain]
+T_copyin(k) = T_fixed + k . T_per_byte ~ 80 + k . 0.3   (cycle)
+\end{lstlisting}
+
+$\rightarrow$ Với $k=1$: 80 cycle/byte. Với $k=4096$: $80 + 1228 \approx 1310$ cycle ($\sim 0.3$ cycle/byte, \textbf{gấp $240\times$}).
+
+\paragraph{(5) TLB hit/miss -- ảnh hưởng gián tiếp.}
+\textbf{TLB} (Translation Lookaside Buffer) là cache phần cứng dịch VA$\rightarrow$PA cho \emph{các truy cập của CPU đang chạy}, không liên quan trực tiếp tới \texttt{walkaddr} (vì đó là software walk). TLB ảnh hưởng tới throughput pipe qua hai con đường gián tiếp:
+
+\begin{itemize}
+  \item \textbf{\texttt{memmove} bên trong \texttt{copyin}}: kernel đọc/ghi qua \emph{kernel direct map} -- đi qua hardware TLB. Cache miss tốn $\sim 100$--$200$ cycle.
+  \item \textbf{Context switch}: mỗi lần đổi \texttt{satp} làm cũ TLB; các instruction đầu tiên sau resume tốn thêm cycle do TLB miss.
+\end{itemize}
+
+\paragraph{(6) CPU cache \& memory locality.}
+Vùng dữ liệu tham gia một \texttt{pipewrite}: user buffer của writer, \texttt{struct pipe} (đặc biệt \texttt{nread}, \texttt{nwrite}), page table của user process, pipe ring buffer \texttt{data[]}. Cache miss $\rightarrow$ lên RAM $\sim 100$--$200$ cycle.
+
+$\rightarrow$ \textbf{Hệ quả cho v1:} \texttt{nwrite++} cập nhật biến trong struct $\rightarrow$ có thể bouncing với reader trên core khác (false sharing -- sẽ giải quyết ở v7).
+
+\paragraph{(7) Spinlock \& contention.}
+\texttt{pipewrite}/\texttt{piperead} đều \texttt{acquire(\&pi->lock)}. Khi giữ lock, kernel \textbf{tắt preemption} trên CPU đó. Lock contention tăng khi reader/writer chạy trên hai core (lock bouncing) hoặc critical section dài.
+
+\paragraph{(8) Sleep / wakeup \& context switch.}
+
+\begin{lstlisting}[language=C]
+sleep(&pi->nwrite, &pi->lock);   // writer ngu khi pipe day
+wakeup(&pi->nread);              // co data moi -> danh thuc reader
+\end{lstlisting}
+
+Mỗi cặp sleep/wakeup gây ra: đổi state process, gọi \texttt{sched()} $\rightarrow$ context switch, TLB cũ, \texttt{wakeup()} quét cả mảng \texttt{proc[NPROC]} (64 entries $\times$ 1 spinlock) -- $O(N)$.
+
+$\rightarrow$ \textbf{Hệ quả cho v1 (PIPESIZE=512, write 4096 byte):} $\sim 7$ cặp sleep/wakeup. Mỗi context switch $\sim 1000$--$3000$ cycle. Tổng: $\sim 10$--$20$ K cycle.
+
+\paragraph{(9) Scheduler \& CPU quantum.}
+xv6 dùng round-robin scheduler đơn giản. Timer interrupt mỗi $\sim 1$ tick ($\sim 10$ ms). \texttt{wakeup} chỉ đổi process sang \texttt{RUNNABLE}, không có gì đảm bảo nó được chọn ngay $\rightarrow$ có thể đợi cả tick. Đây là động lực cho v6 (Priority Boost).
+
+\paragraph{(10) Memory allocator (\texttt{pipealloc}/\texttt{pipeclose}).}
+\texttt{pipealloc} gọi \texttt{kalloc()} cấp 1 trang cho \texttt{struct pipe}; \texttt{pipeclose} gọi \texttt{kfree()}. Chỉ ảnh hưởng \emph{latency tạo/đóng pipe}, không ảnh hưởng throughput sau khi pipe đã mở.
+
+\paragraph{(11) Resource limits \& error checking.}
+Mỗi vòng lặp \texttt{pipewrite} kiểm tra: \texttt{pi->readopen}, \texttt{myproc()->killed}, điều kiện đầy/rỗng, \texttt{copyin} thành công. Mỗi check vài cycle, nhưng \emph{cộng dồn} khi lặp 4096 lần.
+
+\paragraph{(12) Tốc độ reader vs writer -- giới hạn min.}
+\[ \text{throughput\_pipe} \leq \min(\text{tốc độ writer}, \text{tốc độ reader}, \text{tốc độ kernel}) \]
+
+\subsubsection{Cost model định lượng cho v1}
+
+\begin{warnbox}
+\textbf{Đây là \emph{cost model ước lượng}, không phải đo trực tiếp.} Mọi con số cycle (80 cho \texttt{copyin}, 300--500 cho syscall, 1000--3000 cho ctx-switch, 0.3 cycle/byte cho \texttt{memmove}) được suy ra từ cấu trúc các bước thực thi và kinh nghiệm chung trên CPU RISC-V class. Để có số liệu chính thức, tuần sau chúng tôi sẽ đo trực tiếp bằng \texttt{rdcycle}. Hiện tại các phép cộng dùng để \textbf{xếp hạng tương đối} các tầng chi phí.
+\end{warnbox}
+
+Tổng hợp các tầng trên, một lần truyền $n$ byte qua pipe trong v1 tốn:
+
+\begin{lstlisting}[style=plain]
+T_v1(n) = T_syscall_write
+        + n . T_copyin(1)               (moi byte 1 lan copyin)
+        + n . T_lock_acquire_release    (giu-tha lock nhieu lan)
+        + n . T_check                   (kiem tra dieu kien)
+        + ceil(n/PIPESIZE) . T_sleep_wakeup
+        + (doi xung cho reader)
+\end{lstlisting}
+
+Lấy $n = 4096$ làm ví dụ:
+
+\begin{center}
+\begin{tabularx}{0.95\linewidth}{Xr}
+\toprule
+\textbf{Hợp phần} & \textbf{Cycle ước tính} \\
+\midrule
+$1\times$ \texttt{T\_syscall\_write} & $\sim 400$ \\
+$4096\times$ \texttt{T\_copyin(1)} $\approx 80$ cycle & $\sim 327{,}680$ \\
+$4096\times$ lock acquire+release $\approx 20$ cycle & $\sim 81{,}920$ \\
+$4096\times$ check + branch & $\sim 20{,}000$ \\
+$7\times$ sleep/wakeup $\approx 2000$ cycle & $\sim 14{,}000$ \\
+Tương tự cho reader (\texttt{T\_syscall\_read} + $4096\times$ copyout + ...) & $\sim 444{,}000$ \\
+\midrule
+\textbf{Tổng cộng (cả writer + reader)} & \textbf{$\sim 888{,}000$ cycle} \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+$\rightarrow$ Throughput dự đoán lý tưởng: ở CPU 1 GHz, 888 K cycle $\approx 0.888$ ms cho 4096 byte $\rightarrow$ $\sim 4.6$ MB/s. Trong thực tế chỉ đạt $\sim 0.5$ MB/s vì scheduler delay (1 tick $\approx 10$ ms) và overhead emulation của QEMU.
+
+\subsubsection{Đo đạc baseline v1 thực tế}
+
+Compile xv6 với \texttt{PIPE\_VERSION=1}, chạy \texttt{pipebench} qua đủ dải \texttt{chunk\_bytes}:
+
+\begin{center}
+\begin{tabularx}{0.95\linewidth}{rrX}
+\toprule
+\textbf{chunk\_bytes} & \textbf{v1 (B/s)} & \textbf{Ghi chú} \\
+\midrule
+64    & 204{,}600 & overhead \texttt{copyin} chiếm phần lớn \\
+128   & 312{,}148 & tăng tuyến tính với \texttt{chunk\_bytes} \\
+256   & 423{,}667 & bắt đầu chậm lại \\
+512   & 511{,}500 & ngày càng tiệm cận asymptote \\
+1024  & 544{,}714 & bão hòa -- overhead $\sim 80$ cycle/byte là trần \\
+2048  & 558{,}231 & tăng $< 3\%$ so với 1024 \\
+4096  & 566{,}797 & đường gần như nằm ngang \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\textbf{Quan sát:} Đường baseline v1 nhanh chóng đạt asymptote $\sim 570$ KB/s. Khi \texttt{chunk\_bytes} tăng, số lần \texttt{copyin(1)} \emph{không đổi} (vẫn = \texttt{total\_bytes}) $\rightarrow$ vẫn 80 cycle/byte. Đây là \textbf{trần lý thuyết của byte-by-byte copy}.
+
+\subsubsection{Phân rã bottleneck -- định hướng cho các phiên bản sau}
+
+Phân rã chi phí của v1 ở \texttt{chunk\_bytes = 4096}, tổng $\sim 888$ K cycle:
+
+\begin{lstlisting}[style=plain]
+         +----------------------------------+ 100 %
+         |                                  |
+         |   copyin / copyout byte-by-byte  |
+         |   (n x 80 cycle)                 |  ~74 %  <- v2 nham vao day
+         |                                  |
+         +----------------------------------+
+         |   lock acquire/release x n       |   ~9 %
+         +----------------------------------+
+         |   sleep/wakeup/ctx switch        |   ~2 %  <- v5 nham vao day
+         |   (~7 lan do PIPESIZE=512)       |
+         +----------------------------------+
+         |   check, branch                  |   ~2 %
+         +----------------------------------+
+         |   syscall (write+read)           |   ~0.1%
+         +----------------------------------+
+         |   scheduler delay (10ms tick)    |  ~13 %  <- v6 nham vao day
+         +----------------------------------+
+\end{lstlisting}
+
+Map từ bottleneck $\rightarrow$ version cải tiến:
+
+\begin{center}
+\begin{tabularx}{0.95\linewidth}{cXl}
+\toprule
+\textbf{\#} & \textbf{Bottleneck} & \textbf{Version giải quyết} \\
+\midrule
+1 & \texttt{copyin}/\texttt{copyout} byte-by-byte ($\sim 74\%$) & \textbf{v2} -- Bulk Copy \\
+2 & Wrap-around vẫn cắt \texttt{copyin} thành 2 lần & \textbf{v3} -- Ring of Buffers \\
+3 & \texttt{PIPESIZE=512} quá nhỏ $\rightarrow$ nhiều sleep/wakeup & \textbf{v4} -- Multi-page (tuần sau) \\
+4 & \texttt{wakeup} broadcast quét toàn bộ \texttt{proc[]} & \textbf{v5} -- Lazy Wakeup \\
+5 & Scheduler không ưu tiên peer mới wakeup & \textbf{v6} -- Priority Boost \\
+6 & False sharing trên \texttt{nread}/\texttt{nwrite} & \textbf{v7} -- Cache-line Align \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+Mỗi version sau \textbf{nhắm vào 1 bottleneck đã được đo đạc}, không phải tối ưu mò.
+
+% ---------------------------------------------------------------------
+\subsection{Activity 2: v2 -- Bulk Copy (cải tiến từ v1)}
+
+\subsubsection{Bottleneck nhắm tới}
+Theo phân rã ở 2.1.6, $\sim 74\%$ thời gian của v1 dồn vào $n$ lần \texttt{copyin(1)} -- mỗi lần $\sim 80$ cycle fixed overhead, tổng $\sim 327{,}680$ cycle cho 4096 byte. Mục tiêu của v2: \textbf{gom nhiều byte trong một lần \texttt{copyin}}, ``phân bổ'' 80 cycle cố định lên cả khối thay vì lên từng byte. Áp dụng mô hình $T_{copyin}(k) = 80 + k \cdot 0.3$: tăng $k$ từ 1 lên $\sim 512$ sẽ giảm cost-per-byte từ 80 cycle xuống $\sim 0.46$ cycle.
+
+\subsubsection{Giải pháp -- Bulk Copy}
+
+\begin{lstlisting}[language=C]
+// v2 - pipewrite (phan else, thay cho byte-by-byte):
+while(i < n) {
+    uint free_slots = PIPESIZE - (pi->nwrite - pi->nread);
+    uint head_slot  = pi->nwrite % PIPESIZE;
+    uint till_wrap  = PIPESIZE - head_slot;          // khoang cach den cuoi
+    int  to_copy    = umin(n - i, umin(free_slots, till_wrap));
+    if(copyin(pr->pagetable, &pi->data[head_slot], addr + i, to_copy) == -1)
+        break;
+    pi->nwrite += to_copy;
+    i          += to_copy;
+}
+\end{lstlisting}
+
+Hàm helper \texttt{umin(a, b)} trả về giá trị nhỏ hơn trong hai số nguyên không dấu, được thêm vào đầu file.
+
+\textbf{Sơ đồ luồng v2 (ghi 4096 byte, không wrap):}
+
+\begin{lstlisting}[style=plain]
+ user buffer:  [....... 4096 byte .......]
+                          |
+            copyin(N=4096)+---> kernel ring (1 lan duy nhat)
+                          |
+                          v
+ kernel ring:  [.... toan bo 4096 byte ....]
+\end{lstlisting}
+
+\textbf{Phân tích chi phí mới:}
+\begin{lstlisting}[style=plain]
+T_v2(n) = ceil(n / till_wrap) . T_walk + n . T_memmove_byte
+        ~ 1 . 80 + n . ~0.3      (khi khong wrap)
+\end{lstlisting}
+
+\subsubsection{Ưu điểm và nhược điểm của v2}
+
+\textbf{Ưu điểm:}
+\begin{itemize}
+  \item Giảm số lần \texttt{walkaddr} (software walk) từ $n$ lần xuống $\lceil n / \text{till\_wrap} \rceil$ -- phần lớn cycle ``fixed overhead'' được loại bỏ.
+  \item \texttt{memmove} bên trong \texttt{copyin} có thể được CPU vectorize (load/store nhiều byte cùng lúc), tận dụng tốt CPU cache khi đọc/ghi vùng kernel direct map liên tục.
+  \item Không thay đổi cấu trúc dữ liệu $\rightarrow$ backward-compatible với mọi user program.
+\end{itemize}
+
+\textbf{Nhược điểm:}
+\begin{itemize}
+  \item Vẫn bị giới hạn bởi \texttt{PIPESIZE = 512} byte -- chunk lớn ($> 512$ byte) vẫn phải chia nhỏ và chờ reader giải phóng chỗ.
+  \item Vẫn còn wrap-around: một lần ghi có thể bị cắt thành 2 lần \texttt{copyin} ở biên vòng tròn 512 byte.
+  \item Critical section dài hơn (giữ spinlock trong khi \texttt{copyin} cả khối) $\rightarrow$ có thể tăng độ trễ wakeup phía reader.
+\end{itemize}
+
+\begin{callout}
+\textbf{Lý thuyết liên quan -- Synchronization primitives trong xv6:} v2 đánh đổi \emph{số lần vào/ra critical section} lấy \emph{độ dài critical section}.
+\begin{itemize}
+  \item \textbf{Spinlock} (\texttt{pi->lock}): bảo vệ trạng thái pipe (\texttt{nread}, \texttt{nwrite}, \texttt{data}); khi đang giữ spinlock, kernel \textbf{tắt preemption} trên CPU đó.
+  \item \textbf{Sleep/Wakeup}: cơ chế condition variable thô -- \texttt{sleep(chan, lk)} thả \texttt{lk} rồi ngủ; \texttt{wakeup(chan)} đánh thức \textbf{mọi} tiến trình ngủ trên \texttt{chan} (broadcast).
+  \item \textbf{Thundering herd}: vì wakeup là broadcast, nếu nhiều tiến trình cùng chờ, chỉ một thắng cuộc $\rightarrow$ động lực cho v5 (lazy wakeup).
+\end{itemize}
+\end{callout}
+
+\subsubsection{Kết quả đo đạc}
+
+\begin{center}
+\begin{tabular}{rrrr}
+\toprule
+\textbf{chunk\_bytes} & \textbf{v1 (B/s)} & \textbf{v2 (B/s)} & \textbf{Tăng} \\
+\midrule
+64    & 204{,}600 & 270{,}600     & $1.32\times$ \\
+256   & 423{,}667 & 855{,}980     & $2.02\times$ \\
+512   & 511{,}500 & 1{,}353{,}001 & $2.64\times$ \\
+1024  & 544{,}714 & 1{,}613{,}193 & $2.96\times$ \\
+4096  & 566{,}797 & 1{,}823{,}610 & $3.22\times$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\textbf{Phân tích kết quả:} Throughput v2 tăng nhanh theo \texttt{chunk\_bytes} rồi tiến tới một asymptote ($\sim 1.8$ MB/s) -- đây là dấu hiệu rõ ràng của \textbf{Amdahl's Law}: phần ``song song hóa'' được (loại bỏ overhead \texttt{copyin}) đã bão hòa, phần còn lại (memmove + lock + wakeup) trở thành nút thắt cổ chai mới.
+
+% ---------------------------------------------------------------------
+\subsection{Activity 3: v3 -- Ring of Buffers (cải tiến từ v2)}
+
+\subsubsection{Bottleneck nhắm tới -- \emph{hai} yếu tố cộng dồn}
+
+Sau v2, throughput đã tăng $\sim 3\times$ nhưng vẫn bị giới hạn ở $\sim 1.8$ MB/s. v3 nhắm vào \textbf{đồng thời hai bottleneck}:
+
+\textbf{(a) Wrap-around vẫn cắt \texttt{copyin} thành 2 lần (bottleneck \#2).}
+Khi \texttt{nwrite} gần cuối mảng \texttt{data[PIPESIZE]}, một lần ghi \texttt{to\_copy} byte có thể vượt biên cuối $\rightarrow$ kernel buộc phải gọi \texttt{copyin} hai lần.
+
+\textbf{(b) Tăng capacity từ 512 byte (v1/v2) lên 2048 byte (\texttt{N\_BUFS} $\times$ \texttt{BUFSIZE} = $4 \times 512$).}
+Capacity lớn hơn $\rightarrow$ ít lần pipe đầy $\rightarrow$ ít cặp \texttt{sleep}/\texttt{wakeup} + ít context switch. Với \texttt{chunk\_bytes = 4096}: v1/v2 phải sleep 7 lần; v3 chỉ 1 lần.
+
+v3 hiện thực bằng cách chia bộ đệm thành \texttt{N\_BUFS = 4} bộ đệm con, mỗi bộ \texttt{BUFSIZE = 512} byte.
+
+\begin{warnbox}
+\textbf{Cảnh báo về phân tích kết quả:} Vì v3 thay đổi \emph{hai} biến cùng lúc (cấu trúc + capacity), không thể quy toàn bộ speedup cho việc loại bỏ wrap-around. Để \emph{tách} hai lợi ích, cần thí nghiệm bổ sung \texttt{v2-cap2048} (flat buffer 2048 byte + bulk copy, không chunked) -- sẽ thực hiện ở tuần sau (xem Mục 5 TODO).
+\end{warnbox}
+
+\textbf{Sơ đồ wrap-around của v2:}
+
+\begin{lstlisting}[style=plain]
+ v2 ring (PIPESIZE = 512), nwrite gan cuoi:
+ +---------------------------------------+
+ | ............................ [head=500]
+ | ........................................|
+ +---------------------------------------+
+                         ^
+            ghi 100 byte phai chia lam 2:
+              copyin #1: 12 byte (500..512)
+              copyin #2: 88 byte (0..88)
+\end{lstlisting}
+
+\textbf{Sơ đồ chunked ring của v3:}
+
+\begin{lstlisting}[style=plain]
+   buf[0]      buf[1]      buf[2]      buf[3]
+ +--------+ +--------+ +--------+ +--------+
+ | 512 B  | | 512 B  | | 512 B  | | 512 B  |
+ +--------+ +--------+ +--------+ +--------+
+   ^                                     ^
+ nread                                 nwrite
+   - 1 lan copy luon nam gon trong 1 buf
+   - wrap-around chi xay ra khi doi sub-buffer (re hon)
+\end{lstlisting}
+
+\subsubsection{Thay đổi cấu trúc}
+
+\begin{lstlisting}[language=C]
+- char  data[PIPESIZE];          // mang 1D, PIPESIZE = 512 byte
++ char  data[N_BUFS][BUFSIZE];   // N_BUFS=4, BUFSIZE=512, tong = 2048 byte
+  #define PIPE_TOTAL (N_BUFS * BUFSIZE)   // = 2048 (tang 4x so voi v1/v2)
+\end{lstlisting}
+
+Indexing mới:
+
+\begin{lstlisting}[language=C]
+uint pos          = pi->nwrite % PIPE_TOTAL;
+uint buf_idx      = pos / BUFSIZE;      // chi so bo dem con (0-3)
+uint buf_off      = pos % BUFSIZE;      // vi tri trong bo dem con
+uint till_buf_end = BUFSIZE - buf_off;  // khoang con lai trong bo dem con
+int  to_copy      = umin(n - i, umin(free_slots, till_buf_end));
+copyin(pr->pagetable, &pi->data[buf_idx][buf_off], addr + i, to_copy);
+\end{lstlisting}
+
+\subsubsection{Liên hệ lý thuyết}
+
+Đây là một biến thể của \textbf{segmented buffer / chunked ring} thường thấy trong:
+\begin{itemize}
+  \item Linux kernel \texttt{pipe\_inode\_info} (16 trang $\times$ 4096 byte mỗi trang).
+  \item DPDK ring buffers (power-of-two sub-buffers).
+  \item io\_uring SQ/CQ rings.
+\end{itemize}
+
+Mục tiêu chung: \textbf{tách wrap-around ra khỏi data path}, mỗi lần copy là một dải bộ nhớ liên tục, tận dụng tối đa hardware prefetcher và vectorized memcpy.
+
+\subsubsection{Ưu điểm và nhược điểm của v3}
+
+\textbf{Ưu điểm:}
+\begin{itemize}
+  \item Loại bỏ tất cả các trường hợp \texttt{copyin} bị cắt làm 2.
+  \item Cải thiện cache locality: mỗi sub-buffer thường nằm gọn trong vài cache line.
+  \item Dễ mở rộng: thêm \texttt{N\_BUFS} chỉ cần đổi macro.
+\end{itemize}
+
+\textbf{Nhược điểm:}
+\begin{itemize}
+  \item Tổng dung lượng \emph{tăng} lên 2048 byte (so với 512 trong v1/v2) $\rightarrow$ \textbf{speedup quan sát được không thuần do thuật toán}, một phần đến từ capacity. So sánh chưa hoàn toàn công bằng cho đến khi có thí nghiệm \texttt{v2-cap2048}.
+  \item Indexing phức tạp hơn (2 phép chia/modulo thay vì 1).
+  \item Vẫn dùng nội bộ trong \texttt{struct pipe} -- chưa giải quyết internal fragmentation cấp trang.
+\end{itemize}
+
+\subsubsection{Kết quả đo đạc}
+
+\begin{center}
+\begin{tabular}{rrrr}
+\toprule
+\textbf{chunk\_bytes} & \textbf{v2 (B/s)} & \textbf{v3 (B/s)} & \textbf{Tăng} \\
+\midrule
+256   & 855{,}980     & 1{,}075{,}462 & $1.26\times$ \\
+512   & 1{,}353{,}001 & 1{,}997{,}287 & $1.48\times$ \\
+1024  & 1{,}613{,}193 & 3{,}226{,}387 & $2.00\times$ \\
+2048  & 1{,}747{,}626 & 5{,}242{,}880 & $3.00\times$ \\
+4096  & 1{,}823{,}610 & 5{,}991{,}862 & $3.29\times$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\textbf{Phân tích -- speedup đến từ đâu?} Mức tăng đặc biệt mạnh ở \texttt{chunk\_bytes} $\geq 1024$ đến từ \textbf{hai nguồn cộng hưởng}:
+
+\begin{enumerate}
+  \item \textbf{Loại bỏ wrap-around bên trong sub-buffer} (yếu tố thuật toán). Mỗi \texttt{copyin} gọn trong 1 sub-buffer 512 byte $\rightarrow$ giảm số \texttt{walkaddr} ở các lần ghi gần biên.
+  \item \textbf{Capacity 2048 thay vì 512} (yếu tố cấu hình). Với \texttt{chunk\_bytes = 4096}: v2 phải sleep/wakeup 7 lần do pipe đầy, v3 chỉ 1 lần $\rightarrow$ giảm $\sim 6$ ctx-switch ($\sim 12$--$18$ K cycle).
+\end{enumerate}
+
+Với \texttt{chunk\_bytes = 4096} (4096/512 = 8 đợt cho v2 vs 4096/2048 = 2 đợt cho v3), yếu tố (2) có thể chiếm phần lớn speedup. Để khẳng định tỷ lệ đóng góp của (1), cần \texttt{v2-cap2048} trong tuần sau.
+
+% ---------------------------------------------------------------------
+\subsection{Activity 4: Chương trình đo hiệu năng \texttt{pipebench} (công cụ đo)}
+
+Để có cùng một công cụ đo cho tất cả các phiên bản, chúng tôi viết \texttt{user/pipebench.c}. Chương trình quét qua mảng \texttt{chunk\_sizes[]} = \{64, 128, 256, 512, 1024, 2048, 4096\}, với mỗi \texttt{chunk\_bytes} chạy một phép đo throughput hoàn chỉnh (fork, write/read \texttt{total\_bytes}, đo tick), rồi in kết quả ra stdout theo định dạng CSV:
+
+\begin{lstlisting}[style=plain]
+version,chunk_bytes,throughput_bps
+\end{lstlisting}
+
+\textbf{Sơ đồ pipebench:}
+
+\begin{lstlisting}[style=plain]
+        parent                            child
+          |                                 |
+    fork()|------------------------------>  |
+          |                                 |
+   ticks0 = uptime()                        |
+          |                                 |
+          |     write(pipe_w, buf, chunk)   |
+          |     ----------------------->    |   read(pipe_r, buf, chunk)
+          |            (lap den du          |   ----------------------
+          |             total_bytes)        |
+          |                                 |
+   ticks1 = uptime()                       exit
+          |
+   throughput = total_bytes / (ticks1-ticks0)
+\end{lstlisting}
+
+Kết quả lưu vào \texttt{results/ipctp\_vN.txt} và tổng hợp vào \texttt{results/compare.csv} để vẽ biểu đồ.
+
+\textbf{Cách tổ chức đo đạc:} Mỗi phiên bản được compile riêng (\texttt{make CPUS=1 PIPE\_VERSION=N}), boot vào QEMU, chạy \texttt{pipebench} để lấy CSV. Toàn bộ data thô của v1, v2, v3 trong các bảng đều sinh ra từ cùng \texttt{pipebench}, đảm bảo so sánh công bằng.
+
+% =====================================================================
+\section{Personal contribution}
+% =====================================================================
+
+\textbf{Member 1 (Nguyễn Sỹ Tuấn):} Triển khai v2 (bulk copy), viết \texttt{pipebench.c}, tổng hợp kết quả benchmark.
+
+\textbf{Member 2 (Lê Huy Sơn):} Triển khai v3 (ring of buffers), phân tích kết quả đo đạc.
+
+\textbf{Member 3 (Vũ Tiến Long):} Chạy lại baseline v1 (sweep đầy đủ \texttt{chunk\_bytes}), kiểm tra correctness của v2/v3 (\texttt{usertests}, \texttt{pipetest}), chuẩn bị môi trường benchmark cho v4 tuần sau.
+
+% =====================================================================
+\section{Developed code review}
+% =====================================================================
+
+\subsection{Algorithmic development}
+
+Hai thuật toán chính đã phát triển trong tuần này:
+
+\begin{enumerate}
+  \item \textbf{Bulk copy với wrap-around handling (v2):} Tính \texttt{till\_wrap = PIPESIZE - head\_slot} và \texttt{free\_slots = PIPESIZE - (nwrite - nread)} để xác định số byte tối đa có thể copy liên tục, sau đó gọi \texttt{copyin}/\texttt{copyout} một lần. Số lần gọi giảm từ $n$ xuống $\lceil n / \text{till\_wrap} \rceil$.
+  \item \textbf{2D circular buffer indexing (v3):} Thay \texttt{pos \% PIPESIZE} bằng \texttt{(pos/BUFSIZE, pos\%BUFSIZE)} để giới hạn mỗi lần copy trong một sub-buffer.
+\end{enumerate}
+
+\subsection{Phân tích so sánh tổng hợp các phiên bản}
+
+\begin{center}
+\begin{tabularx}{\linewidth}{lXlrl}
+\toprule
+\textbf{Phiên bản} & \textbf{Đặc trưng kỹ thuật} & \textbf{\#\texttt{copyin}/n byte} & \textbf{Capacity} & \textbf{CS length} \\
+\midrule
+v1 & byte-by-byte                      & $n$                                 & 512  & rất ngắn $\times n$ \\
+v2 & bulk copy                         & $\lceil n/\text{till\_wrap} \rceil$ & 512  & TB $\times$ ít lần \\
+v3 & chunked ring + capacity $4\times$ & $\lceil n/\text{BUFSIZE} \rceil$    & 2048 & TB $\times$ ít lần \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\textbf{Quan sát:} Có một trade-off rõ ràng giữa \textbf{độ dài critical section} và \textbf{số lần vượt biên user/kernel}. Hướng tối ưu của v4--v7 (tuần sau) tiếp tục giảm số lần \texttt{copyin} (page-isolated buffer) và chuyển sang giảm chi phí synchronization.
+
+\subsection{Source code enhanced and/or revised}
+
+\textbf{kernel/pipe.c} -- phần thay đổi chính của v2 (\texttt{pipewrite}):
+
+\begin{lstlisting}[language=C]
+#if PIPE_VERSION == 2
+static inline uint
+umin(uint a, uint b) { return a < b ? a : b; }
+
+// pipewrite - phan else (bulk copy thay cho byte-by-byte):
+} else {
+    uint free_slots = PIPESIZE - (pi->nwrite - pi->nread);
+    uint head_slot  = pi->nwrite % PIPESIZE;
+    uint till_wrap  = PIPESIZE - head_slot;
+    int  to_copy    = (int)umin((uint)(n - i), umin(free_slots, till_wrap));
+    if(copyin(pr->pagetable, &pi->data[head_slot], addr + i, to_copy) == -1)
+        break;
+    pi->nwrite += to_copy;
+    i          += to_copy;
+}
+#endif
+\end{lstlisting}
+
+\textbf{kernel/pipe.c} -- struct thay đổi của v3:
+
+\begin{lstlisting}[language=C]
+#if PIPE_VERSION == 3
+#define N_BUFS    4
+#define BUFSIZE   512
+#define PIPE_TOTAL (N_BUFS * BUFSIZE)
+
+struct pipe {
+    struct spinlock lock;
+    char   data[N_BUFS][BUFSIZE];
+    uint   nread;
+    uint   nwrite;
+    int    readopen;
+    int    writeopen;
+};
+#endif
+\end{lstlisting}
+
+\subsection{Testing result}
+
+\textit{(Kết quả kiểm thử, có thể chèn ảnh minh họa bên dưới.)}
+
+\textbf{pipebench tổng hợp (chunk\_bytes = 1024, total\_bytes = 4 MB):}
+
+\begin{lstlisting}[style=plain]
+$ pipebench 4194304 1024
+version  chunk   throughput
+v1       1024    544,714 B/s   (531 KB/s)
+v2       1024    1,613,193 B/s (1,575 KB/s)
+v3       1024    3,226,387 B/s (3,150 KB/s)
+\end{lstlisting}
+
+\textbf{Biểu đồ ASCII so sánh throughput (chunk\_bytes = 4096):}
+
+\begin{lstlisting}[style=plain]
+           0    1M   2M   3M   4M   5M   6M   7M  B/s
+           |----+----+----+----+----+----+----+
+   v1  #                                            0.57 M
+   v2  ########                                    1.82 M
+   v3  #########################                   5.99 M
+\end{lstlisting}
+
+\textit{(Chèn ảnh biểu đồ \texttt{compare\_throughput.png}.)}
+
+\subsection{Đánh giá chung -- ưu/nhược điểm tổng thể của hướng tiếp cận}
+
+\textbf{Ưu điểm chung của các phiên bản đã làm (v1, v2, v3):}
+\begin{itemize}
+  \item Mỗi bước cải tiến cô lập, dễ verify correctness (test bằng \texttt{usertests}, \texttt{pipetest}).
+  \item Macro \texttt{PIPE\_VERSION} cho phép switch nhanh giữa các bản $\rightarrow$ reproduce dễ dàng.
+  \item Thuần đổi cơ chế trong kernel -- user space không phải sửa.
+  \item Đã có baseline v1 đo lại trên cùng môi trường $\rightarrow$ mọi tỷ lệ ``tăng X lần'' đều có cơ sở định lượng.
+\end{itemize}
+
+\textbf{Nhược điểm tổng thể:}
+\begin{itemize}
+  \item Mới chỉ tối ưu \textbf{data path} -- chưa chạm đến \textbf{control path} (sleep/wakeup, scheduler).
+  \item Capacity v3 (2048) \emph{lớn hơn} v1/v2 (512) $\rightarrow$ một phần speedup của v3 đến từ capacity chứ không thuần thuật toán; cần thí nghiệm \texttt{v2-cap2048} để tách hai yếu tố. v4 tuần sau (4096) sẽ chuẩn hóa capacity.
+  \item Benchmark chạy single-CPU (\texttt{CPUS=1}), chưa đo được hiệu ứng false-sharing ở nhiều core (sẽ được xét khi triển khai v7).
+\end{itemize}
+
+% =====================================================================
+\section{TODO}
+% =====================================================================
+
+\paragraph{(a) List of remaining issues:}
+\begin{itemize}
+  \item v3 dùng \texttt{PIPE\_TOTAL = 2048} byte, \emph{lớn hơn} v1/v2 (\texttt{PIPESIZE = 512}) $\rightarrow$ speedup hiện tại trộn lẫn lợi ích thuật toán (chunked ring) với lợi ích capacity. Cần thí nghiệm ablation \texttt{v2-cap2048} để tách hai yếu tố.
+  \item Mọi con số cycle hiện tại là \emph{cost-model ước lượng}; cần đo trực tiếp bằng \texttt{rdcycle} và benchmark vi mô để có số liệu chính thức.
+  \item Cần chạy lại benchmark nhiều lần để tính trung bình và giảm noise từ scheduler.
+  \item Chưa đo được tác động trong kịch bản nhiều cặp pipe đồng thời (contention).
+\end{itemize}
+
+\paragraph{(b) List of tasks to carry out in the next period:}
+\begin{enumerate}
+  \item Thí nghiệm \textbf{\texttt{v2-cap2048} (ablation study)}: dùng flat buffer 2048 byte + bulk copy (không chunked), so sánh với v3 (chunked $4 \times 512$). Mục tiêu: tách lợi ích do \emph{tăng capacity} khỏi lợi ích do \emph{segmented ring}.
+  \item Đo trực tiếp các cost component bằng \texttt{rdcycle} (đọc CSR \texttt{cycle} quanh \texttt{copyin}, syscall, ctx-switch) để thay thế các con số ước lượng hiện tại.
+  \item Triển khai \textbf{v4 -- Multi-page Allocation}: thay \texttt{char data[N\_BUFS][BUFSIZE]} bằng con trỏ \texttt{char *data} và cấp một trang riêng 4096 byte bằng \texttt{kalloc()} thứ hai. \emph{Liên hệ:} khắc phục internal fragmentation cấp trang.
+  \item Triển khai \textbf{v5 -- Lazy Wakeup}: chỉ gọi \texttt{wakeup()} khi peer đang ngủ. \emph{Liên hệ:} tránh thundering-herd, futex-style wakeup.
+  \item Triển khai \textbf{v6 -- Priority Boost}: tiến trình vừa được wakeup nhận \texttt{PRIORITY\_BOOST = 10}, scheduler ưu tiên process priority cao. \emph{Liên hệ:} multi-level feedback queue, IO-bound boosting.
+  \item Triển khai \textbf{v7 -- Cache-line Alignment}: thêm padding 64-byte giữa \texttt{nwrite} và \texttt{nread} trong \texttt{struct pipe}. \emph{Liên hệ:} MESI protocol, cache coherence.
+  \item Chạy benchmark đầy đủ tất cả 7 phiên bản (+ ablation), vẽ biểu đồ so sánh.
+  \item Phân tích nguyên nhân tăng/giảm hiệu năng giữa các phiên bản.
+\end{enumerate}
+
+\paragraph{(c) Milestone:}
+\begin{itemize}
+  \item Hoàn thành v4--v7 và có biểu đồ so sánh đầy đủ 7 phiên bản.
+  \item Viết phân tích chi tiết lý giải tại sao mỗi tối ưu lại cải thiện throughput, gắn với mô hình lý thuyết (Amdahl, producer-consumer, MESI, scheduler classes).
+  \item Chuẩn bị slide/report cuối kỳ trình bày kết quả nghiên cứu.
+\end{itemize}
+
+% =====================================================================
+\section{Notes for revision}
+% =====================================================================
+
+\begin{itemize}
+  \item Cần thống nhất lại capacity trong toàn bộ báo cáo: theo code hiện tại, v1/v2 dùng \texttt{PIPESIZE = 512}, v3 dùng \texttt{PIPE\_TOTAL = 2048}, v4+ dùng \texttt{PIPE\_TOTAL = 4096}. Vì vậy các chỗ ghi v1/v2 là \texttt{4056} hoặc \texttt{4096} cần sửa lại để khớp implementation.
+  \item Khi phân tích speedup của v3, không nên quy toàn bộ cải thiện cho việc giảm wrap-around. v3 đồng thời tăng dung lượng pipe từ 512 byte lên 2048 byte, nên throughput tăng còn đến từ việc giảm số lần pipe full, \texttt{sleep}/\texttt{wakeup} và context switch.
+  \item Các con số cycle như syscall cost, \texttt{copyin}/\texttt{copyout} cost, page table walk, context switch nên được trình bày là mô hình ước lượng hoặc cost model. Nếu muốn dùng như kết luận định lượng, cần bổ sung phép đo trực tiếp bằng \texttt{rdcycle} hoặc benchmark vi mô.
+  \item Phần TLB nên diễn giải cẩn thận hơn: trong xv6, \texttt{copyin}/\texttt{copyout} tra user page table bằng \texttt{walkaddr()}, tức chi phí rõ nhất trong code là software page-table walk. TLB vẫn ảnh hưởng đến locality và context switch ở mức hệ thống, nhưng không nên mô tả như toàn bộ chi phí dịch địa chỉ đều do TLB phần cứng quyết định.
+  \item Để so sánh v2 và v3 công bằng hơn, có thể bổ sung một thí nghiệm trung gian: \texttt{v2-cap2048} dùng flat buffer 2048 byte và bulk copy, rồi so với v3 \texttt{4 x 512}. Khi đó mới tách được lợi ích do tăng capacity khỏi lợi ích do segmented/chunked ring.
+\end{itemize}
+
+\end{document}

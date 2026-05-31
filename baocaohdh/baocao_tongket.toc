@@ -1,0 +1,48 @@
+\babel@toc {vietnamese}{}\relax 
+\contentsline {section}{Phân công công việc \& Đóng góp}{3}{Doc-Start}%
+\contentsline {section}{\numberline {1}Giới thiệu}{4}{section.1}%
+\contentsline {subsection}{\numberline {1.1}Đặt vấn đề}{4}{subsection.1.1}%
+\contentsline {subsection}{\numberline {1.2}Câu hỏi nghiên cứu}{4}{subsection.1.2}%
+\contentsline {section}{\numberline {2}Cơ sở lý thuyết}{4}{section.2}%
+\contentsline {subsection}{\numberline {2.1}Inter-Process Communication (IPC)}{4}{subsection.2.1}%
+\contentsline {subsection}{\numberline {2.2}Pipe trong UNIX/xv6}{5}{subsection.2.2}%
+\contentsline {subsection}{\numberline {2.3}Circular Buffer (Bộ đệm vòng)}{7}{subsection.2.3}%
+\contentsline {subsection}{\numberline {2.4}Cơ chế Spinlock và Sleep/Wakeup trong xv6}{8}{subsection.2.4}%
+\contentsline {subsection}{\numberline {2.5}Cách pipe hoạt động với tiến trình}{10}{subsection.2.5}%
+\contentsline {subsection}{\numberline {2.6}Thông lượng IPC (IPC Throughput)}{11}{subsection.2.6}%
+\contentsline {section}{\numberline {3}Phân tích Baseline (v1)}{12}{section.3}%
+\contentsline {subsection}{\numberline {3.1}Đường đi của một lần write/read qua pipe}{12}{subsection.3.1}%
+\contentsline {subsection}{\numberline {3.2}Source code đầy đủ -- pipealloc, pipewrite và piperead v1}{13}{subsection.3.2}%
+\contentsline {subsubsection}{\numberline {3.2.1}struct pipe và pipealloc() v1}{13}{subsubsection.3.2.1}%
+\contentsline {subsubsection}{\numberline {3.2.2}pipewrite() và piperead() v1}{15}{subsubsection.3.2.2}%
+\contentsline {subsubsection}{\numberline {3.2.3}pipeclose() v1}{17}{subsubsection.3.2.3}%
+\contentsline {subsection}{\numberline {3.3}Các phiên bản tối ưu thông lượng}{19}{subsection.3.3}%
+\contentsline {subsection}{\numberline {3.4}Đo băng thông của phiên bản v1}{19}{subsection.3.4}%
+\contentsline {section}{\numberline {4}Các phiên bản tối ưu (v2--v8)}{20}{section.4}%
+\contentsline {subsection}{\numberline {4.1}v2 -- Bulk Copy}{20}{subsection.4.1}%
+\contentsline {subsubsection}{\numberline {4.1.1}Kết quả đo đạc v2}{23}{subsubsection.4.1.1}%
+\contentsline {subsection}{\numberline {4.2}v3 -- Ring of Buffers}{24}{subsection.4.2}%
+\contentsline {subsubsection}{\numberline {4.2.1}Giải pháp -- Chunked 2D Ring Buffer}{25}{subsubsection.4.2.1}%
+\contentsline {subsubsection}{\numberline {4.2.2}Kết quả đo đạc v3}{26}{subsubsection.4.2.2}%
+\contentsline {subsection}{\numberline {4.3}v4 -- Multi-page Allocation}{26}{subsection.4.3}%
+\contentsline {subsubsection}{\numberline {4.3.1}Kết quả đo đạc v4}{28}{subsubsection.4.3.1}%
+\contentsline {subsection}{\numberline {4.4}v5 -- Lazy Wakeup}{28}{subsection.4.4}%
+\contentsline {subsubsection}{\numberline {4.4.1}Phân tích đối xứng: trạng thái writer khi reader đang đọc}{30}{subsubsection.4.4.1}%
+\contentsline {subsubsection}{\numberline {4.4.2}Kết quả đo đạc v5}{31}{subsubsection.4.4.2}%
+\contentsline {subsection}{\numberline {4.5}v6 -- Priority Boost}{31}{subsection.4.5}%
+\contentsline {subsection}{\numberline {4.6}v7 -- Cache-line Alignment}{35}{subsection.4.6}%
+\contentsline {subsubsection}{\numberline {4.6.1}Nhận xét về kết quả v7 trên single-CPU}{37}{subsubsection.4.6.1}%
+\contentsline {subsection}{\numberline {4.7}v8 -- All Combined (Tổng hợp tất cả cơ chế v2--v7)}{37}{subsection.4.7}%
+\contentsline {subsubsection}{\numberline {4.7.1}Mục tiêu -- Kết hợp 5 cơ chế thành 1 phiên bản hoàn chỉnh}{37}{subsubsection.4.7.1}%
+\contentsline {subsubsection}{\numberline {4.7.2}Thiết kế v8}{37}{subsubsection.4.7.2}%
+\contentsline {subsubsection}{\numberline {4.7.3}Kết quả benchmark -- v1 vs v8}{38}{subsubsection.4.7.3}%
+\contentsline {section}{\numberline {5}Source Code Review -- v8}{38}{section.5}%
+\contentsline {subsection}{\numberline {5.1}pipealloc()}{38}{subsection.5.1}%
+\contentsline {subsection}{\numberline {5.2}pipeclose()}{39}{subsection.5.2}%
+\contentsline {subsection}{\numberline {5.3}pipewrite()}{40}{subsection.5.3}%
+\contentsline {subsection}{\numberline {5.4}piperead()}{41}{subsection.5.4}%
+\contentsline {section}{\numberline {6}Phân tích tổng thể}{42}{section.6}%
+\contentsline {subsection}{\numberline {6.1}Định luật Amdahl}{42}{subsection.6.1}%
+\contentsline {subsubsection}{\numberline {6.1.1}Áp dụng Định luật Amdahl}{43}{subsubsection.6.1.1}%
+\contentsline {subsection}{\numberline {6.2}Bài học kinh nghiệm (Methodology)}{44}{subsection.6.2}%
+\contentsline {subsection}{\numberline {6.3}Hạn chế và hướng mở rộng}{44}{subsection.6.3}%

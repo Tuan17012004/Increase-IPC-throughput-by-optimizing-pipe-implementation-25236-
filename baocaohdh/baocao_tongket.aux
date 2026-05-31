@@ -1,0 +1,122 @@
+\relax 
+\providecommand\babel@aux[2]{}
+\@nameuse{bbl@beforestart}
+\catcode `"\active 
+\providecommand\hyper@newdestlabel[2]{}
+\providecommand*\HyPL@Entry[1]{}
+\HyPL@Entry{0<</S/D>>}
+\babel@aux{vietnamese}{}
+\HyPL@Entry{1<</S/D>>}
+\@writefile{toc}{\contentsline {section}{Phân công công việc \& Đóng góp}{3}{Doc-Start}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {1}Giới thiệu}{4}{section.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {1.1}Đặt vấn đề}{4}{subsection.1.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {1.2}Câu hỏi nghiên cứu}{4}{subsection.1.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {2}Cơ sở lý thuyết}{4}{section.2}\protected@file@percent }
+\newlabel{sec:theory}{{2}{4}{Cơ sở lý thuyết}{section.2}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.1}Inter-Process Communication (IPC)}{4}{subsection.2.1}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces Hai cơ chế giao tiếp: a) Shared-Memory b) Message-Passing}}{5}{figure.caption.1}\protected@file@percent }
+\providecommand*\caption@xref[2]{\@setref\relax\@undefined{#1}}
+\newlabel{fig:ipc}{{1}{5}{Hai cơ chế giao tiếp: a) Shared-Memory b) Message-Passing}{figure.caption.1}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.2}Pipe trong UNIX/xv6}{5}{subsection.2.2}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Unix pipe}}{5}{figure.caption.2}\protected@file@percent }
+\newlabel{fig:pipe}{{2}{5}{Unix pipe}{figure.caption.2}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Producer - Consumer Problem}}{6}{figure.caption.3}\protected@file@percent }
+\newlabel{fig:ProCon}{{3}{6}{Producer - Consumer Problem}{figure.caption.3}{}}
+\newlabel{lst:pipe_v1}{{1}{7}{struct pipe -- v1 baseline, PIPESIZE = 512 byte}{lstlisting.1}{}}
+\@writefile{lol}{\contentsline {lstlisting}{\numberline {1}{\ignorespaces struct pipe -- v1 baseline, PIPESIZE = 512 byte}}{7}{lstlisting.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.3}Circular Buffer (Bộ đệm vòng)}{7}{subsection.2.3}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces Circular Buffer}}{8}{figure.caption.4}\protected@file@percent }
+\newlabel{fig:circular_buffer}{{4}{8}{Circular Buffer}{figure.caption.4}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.4}Cơ chế Spinlock và Sleep/Wakeup trong xv6}{8}{subsection.2.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.5}Cách pipe hoạt động với tiến trình}{10}{subsection.2.5}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.6}Thông lượng IPC (IPC Throughput)}{11}{subsection.2.6}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {3}Phân tích Baseline (v1)}{12}{section.3}\protected@file@percent }
+\newlabel{sec:baseline}{{3}{12}{Phân tích Baseline (v1)}{section.3}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.1}Đường đi của một lần write/read qua pipe}{12}{subsection.3.1}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {5}{\ignorespaces Đường đi \texttt  {write()}/\texttt  {read()} qua pipe trong xv6. Khung nét đứt = Kernel (Supervisor Mode); ô trắng = User space.}}{12}{figure.caption.5}\protected@file@percent }
+\newlabel{fig:pipe_path}{{5}{12}{Đường đi \texttt {write()}/\texttt {read()} qua pipe trong xv6. Khung nét đứt = Kernel (Supervisor Mode); ô trắng = User space}{figure.caption.5}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces Map từng hàm trong đường đi write/read pipe $\to $ file nguồn trong xv6}}{13}{table.caption.6}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.2}Source code đầy đủ -- pipealloc, pipewrite và piperead v1}{13}{subsection.3.2}\protected@file@percent }
+\newlabel{ssec:v1src}{{3.2}{13}{Source code đầy đủ -- pipealloc, pipewrite và piperead v1}{subsection.3.2}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {3.2.1}struct pipe và pipealloc() v1}{13}{subsubsection.3.2.1}\protected@file@percent }
+\newlabel{lst:pipe_struct_v1}{{2}{13}{struct pipe v1 -- buffer nhúng 512 byte (kernel/pipe.c:43)}{lstlisting.2}{}}
+\@writefile{lol}{\contentsline {lstlisting}{\numberline {2}{\ignorespaces struct pipe v1 -- buffer nhúng 512 byte (kernel/pipe.c:43)}}{13}{lstlisting.2}\protected@file@percent }
+\newlabel{lst:pipealloc_v1}{{3}{14}{pipealloc() -- v1, khoi tao pipe (kernel/pipe.c:151)}{lstlisting.3}{}}
+\@writefile{lol}{\contentsline {lstlisting}{\numberline {3}{\ignorespaces pipealloc() -- v1, khoi tao pipe (kernel/pipe.c:151)}}{14}{lstlisting.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {3.2.2}pipewrite() và piperead() v1}{15}{subsubsection.3.2.2}\protected@file@percent }
+\newlabel{lst:pipewrite_v1}{{4}{15}{pipewrite() -- v1 baseline, byte-by-byte (kernel/pipe.c:243)}{lstlisting.4}{}}
+\@writefile{lol}{\contentsline {lstlisting}{\numberline {4}{\ignorespaces pipewrite() -- v1 baseline, byte-by-byte (kernel/pipe.c:243)}}{15}{lstlisting.4}\protected@file@percent }
+\newlabel{lst:piperead_v1}{{5}{16}{piperead() -- v1 baseline, byte-by-byte (kernel/pipe.c:465)}{lstlisting.5}{}}
+\@writefile{lol}{\contentsline {lstlisting}{\numberline {5}{\ignorespaces piperead() -- v1 baseline, byte-by-byte (kernel/pipe.c:465)}}{16}{lstlisting.5}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {3.2.3}pipeclose() v1}{17}{subsubsection.3.2.3}\protected@file@percent }
+\newlabel{lst:pipeclose_v1}{{6}{17}{pipeclose() -- v1, dong mot dau pipe (kernel/pipe.c:201)}{lstlisting.6}{}}
+\@writefile{lol}{\contentsline {lstlisting}{\numberline {6}{\ignorespaces pipeclose() -- v1, dong mot dau pipe (kernel/pipe.c:201)}}{17}{lstlisting.6}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.3}Các phiên bản tối ưu thông lượng}{19}{subsection.3.3}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {2}{\ignorespaces Các phiên bản tối ưu thông lượng}}{19}{table.caption.7}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.4}Đo băng thông của phiên bản v1}{19}{subsection.3.4}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {3}{\ignorespaces Throughput baseline v1 (B/s) theo chunk\_bytes}}{20}{table.caption.8}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {4}Các phiên bản tối ưu (v2--v8)}{20}{section.4}\protected@file@percent }
+\newlabel{sec:versions}{{4}{20}{Các phiên bản tối ưu (v2--v8)}{section.4}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.1}v2 -- Bulk Copy}{20}{subsection.4.1}\protected@file@percent }
+\@writefile{lol}{\contentsline {lstlisting}{\numberline {7}{\ignorespaces v2 -- pipewrite thay byte-by-byte bằng bulk copyin}}{20}{lstlisting.7}\protected@file@percent }
+\@writefile{lol}{\contentsline {lstlisting}{\numberline {8}{\ignorespaces v2 -- piperead thay byte-by-byte bằng bulk copyout}}{21}{lstlisting.8}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.1.1}Kết quả đo đạc v2}{23}{subsubsection.4.1.1}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {4}{\ignorespaces So sánh throughput v1 vs v2 (B/s)}}{23}{table.caption.9}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.2}v3 -- Ring of Buffers}{24}{subsection.4.2}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {5}{\ignorespaces So sánh throughput v2 (PIPESIZE=512) vs v2-naive (PIPESIZE=2048) (B/s)}}{24}{table.caption.10}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.2.1}Giải pháp -- Chunked 2D Ring Buffer}{25}{subsubsection.4.2.1}\protected@file@percent }
+\@writefile{lol}{\contentsline {lstlisting}{\numberline {9}{\ignorespaces v3 -- struct pipe với 2D ring buffer (N\_BUFS × BUFSIZE)}}{25}{lstlisting.9}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.2.2}Kết quả đo đạc v3}{26}{subsubsection.4.2.2}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {6}{\ignorespaces So sánh throughput v2-naive (PIPESIZE=2048) vs v3 -- Ring of Buffers (B/s)}}{26}{table.caption.11}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.3}v4 -- Multi-page Allocation}{26}{subsection.4.3}\protected@file@percent }
+\@writefile{lol}{\contentsline {lstlisting}{\numberline {10}{\ignorespaces Cấp 2 trang riêng biệt cho metadata và data}}{26}{lstlisting.10}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.3.1}Kết quả đo đạc v4}{28}{subsubsection.4.3.1}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {7}{\ignorespaces So sánh throughput v3 vs v4 (B/s)}}{28}{table.caption.12}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.4}v5 -- Lazy Wakeup}{28}{subsection.4.4}\protected@file@percent }
+\@writefile{lol}{\contentsline {lstlisting}{\numberline {11}{\ignorespaces wakeup()}}{28}{lstlisting.11}\protected@file@percent }
+\@writefile{lol}{\contentsline {lstlisting}{\numberline {12}{\ignorespaces v5 -- pipewrite: lazy wakeup qua biến need\_wakeup (kernel/pipe.c:447)}}{29}{lstlisting.12}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.4.1}Phân tích đối xứng: trạng thái writer khi reader đang đọc}{30}{subsubsection.4.4.1}\protected@file@percent }
+\@writefile{lol}{\contentsline {lstlisting}{\numberline {13}{\ignorespaces v5 -- piperead: lazy wakeup qua biến was\_full (kernel/pipe.c:678)}}{30}{lstlisting.13}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.4.2}Kết quả đo đạc v5}{31}{subsubsection.4.4.2}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {8}{\ignorespaces So sánh throughput v4 vs v5 (B/s)}}{31}{table.caption.13}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.5}v6 -- Priority Boost}{31}{subsection.4.5}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {6}{\ignorespaces Các trạng thái của process.}}{32}{figure.caption.14}\protected@file@percent }
+\newlabel{fig:processstate}{{6}{32}{Các trạng thái của process}{figure.caption.14}{}}
+\@writefile{lol}{\contentsline {lstlisting}{\numberline {14}{\ignorespaces scheduler() trong xv6}}{32}{lstlisting.14}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {7}{\ignorespaces Multi-Level Feedback Queue (MLFQ).}}{33}{figure.caption.15}\protected@file@percent }
+\newlabel{fig:mlfq}{{7}{33}{Multi-Level Feedback Queue (MLFQ)}{figure.caption.15}{}}
+\@writefile{lol}{\contentsline {lstlisting}{\numberline {15}{\ignorespaces v6 -- Priority boost trong wakeup() và scheduler}}{33}{lstlisting.15}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {9}{\ignorespaces So sánh throughput v5 vs v6 (B/s)}}{35}{table.caption.16}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.6}v7 -- Cache-line Alignment}{35}{subsection.4.6}\protected@file@percent }
+\@writefile{lol}{\contentsline {lstlisting}{\numberline {16}{\ignorespaces v7 -- Padding 64-byte tách nwrite và nread lên cache line riêng}}{36}{lstlisting.16}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.6.1}Nhận xét về kết quả v7 trên single-CPU}{37}{subsubsection.4.6.1}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {10}{\ignorespaces So sánh throughput v6 vs v7 (B/s) -- single-CPU}}{37}{table.caption.17}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {11}{\ignorespaces Throughput v7 (B/s) -- CPUS=1 vs CPUS=2}}{37}{table.caption.18}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.7}v8 -- All Combined (Tổng hợp tất cả cơ chế v2--v7)}{37}{subsection.4.7}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.7.1}Mục tiêu -- Kết hợp 5 cơ chế thành 1 phiên bản hoàn chỉnh}{37}{subsubsection.4.7.1}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {12}{\ignorespaces 5 cơ chế được kết hợp trong v8}}{37}{table.caption.19}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.7.2}Thiết kế v8}{37}{subsubsection.4.7.2}\protected@file@percent }
+\@writefile{lol}{\contentsline {lstlisting}{\numberline {17}{\ignorespaces v8 -- struct pipe và PIPE\_TOTAL giống v7}}{38}{lstlisting.17}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.7.3}Kết quả benchmark -- v1 vs v8}{38}{subsubsection.4.7.3}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {13}{\ignorespaces So sánh throughput v1 vs v8 -- CPUS=1 và CPUS=2 (B/s)}}{38}{table.caption.20}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {5}Source Code Review -- v8}{38}{section.5}\protected@file@percent }
+\newlabel{sec:code}{{5}{38}{Source Code Review -- v8}{section.5}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.1}pipealloc()}{38}{subsection.5.1}\protected@file@percent }
+\@writefile{lol}{\contentsline {lstlisting}{\numberline {18}{\ignorespaces pipealloc() -- v8: 2 trang rieng biet (kernel/pipe.c)}}{38}{lstlisting.18}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.2}pipeclose()}{39}{subsection.5.2}\protected@file@percent }
+\@writefile{lol}{\contentsline {lstlisting}{\numberline {19}{\ignorespaces pipeclose() -- v8: giai phong 2 trang (kernel/pipe.c)}}{40}{lstlisting.19}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.3}pipewrite()}{40}{subsection.5.3}\protected@file@percent }
+\@writefile{lol}{\contentsline {lstlisting}{\numberline {20}{\ignorespaces pipewrite() -- v8: bulk copy + lazy wakeup (kernel/pipe.c)}}{40}{lstlisting.20}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.4}piperead()}{41}{subsection.5.4}\protected@file@percent }
+\@writefile{lol}{\contentsline {lstlisting}{\numberline {21}{\ignorespaces piperead() -- v8: bulk copy + lazy wakeup (kernel/pipe.c)}}{41}{lstlisting.21}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {6}Phân tích tổng thể}{42}{section.6}\protected@file@percent }
+\newlabel{sec:analysis}{{6}{42}{Phân tích tổng thể}{section.6}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.1}Định luật Amdahl}{42}{subsection.6.1}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {14}{\ignorespaces Phân rã chi phí v1 -- $n = 4096$~byte, QEMU single-CPU}}{43}{table.caption.21}\protected@file@percent }
+\newlabel{tab:cost_breakdown}{{14}{43}{Phân rã chi phí v1 -- $n = 4096$~byte, QEMU single-CPU}{table.caption.21}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {6.1.1}Áp dụng Định luật Amdahl}{43}{subsubsection.6.1.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.2}Bài học kinh nghiệm (Methodology)}{44}{subsection.6.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.3}Hạn chế và hướng mở rộng}{44}{subsection.6.3}\protected@file@percent }
+\bibcite{silberschatz2018}{1}
+\bibcite{xv6riscv}{2}
+\gdef \@abspage@last{46}
