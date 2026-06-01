@@ -1,4 +1,4 @@
-This is XeTeX, Version 3.141592653-2.6-0.999995 (TeX Live 2023/Debian) (preloaded format=xelatex 2026.5.21)  31 MAY 2026 18:26
+This is XeTeX, Version 3.141592653-2.6-0.999995 (TeX Live 2023/Debian) (preloaded format=xelatex 2026.5.21)  1 JUN 2026 12:45
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -1085,11 +1085,48 @@ Underfull \hbox (badness 10000) in paragraph at lines 217--219
 
  []
 
+
+Overfull \hbox (244.79749pt too wide) in paragraph at lines 220--223
+[]\TU/lmr/m/n/12 Source code: [][]$[][][][][] [] [] [] [][][][][][] [] [][][] [
+] [][][][][][][][][][][][] [] [][][][][][][][][][][][][][][][][][][][][][][][][
+][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][]
+[][][][][][][][] []
+ []
+
+
+Overfull \hbox (2.84976pt too wide) in paragraph at lines 220--223
+\TU/lmr/m/n/12 Design thinking: [][]$[][][][][] [] [] [] [][][] [] [][][][][] [
+] [][][] [] [][][][][][] [] [][][][][][][][][][][][][][][][][][][][][][] [] [][
+] [] [][] []
+ []
+
+
+Overfull \hbox (75.88568pt too wide) in paragraph at lines 220--223
+[][] [] [][][][][][][][][] [] [][] [] [][] [] [][][][][][] [] [][] [] [][] [] [
+][][][][][][][][][][][][][][][][][][][] [] [][][][][][][][] [] [][][][][][][] [
+] [] [] [][][][][][][][][][][][][][][][][][][]$[][] 
+ []
+
+
+Overfull \hbox (15.61778pt too wide) in paragraph at lines 220--223
+\TU/lmr/m/n/12 Project Management: [][]$[][][][][] [] [] [] [][][][][][][][][][
+] [] [][][][][][][][][] [] [][][] [] [][][][] [] [][][][][][][][] [] [][][][][]
+[][][] []
+ []
+
+
+Overfull \hbox (331.46936pt too wide) in paragraph at lines 220--223
+[][][] [] [][][][] [] [][][] [] [][][][][][][] [] [][][] [] [][][] [] [][][][][
+] [] [][] [] [][][][][][][] [] [][][][] [] [][][][][][][][][] [] [][][][][][][]
+[][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][
+][][][][][][][][][][][][][][][][][]$[][] 
+ []
+
 [3] [4]
 File: figures/IPC.png Graphic file (type bmp)
 <figures/IPC.png>
 
-Overfull \hbox (2.37431pt too wide) in paragraph at lines 298--301
+Overfull \hbox (2.37431pt too wide) in paragraph at lines 301--304
 \TU/lmr/bx/n/12 buffer \TU/lmr/m/n/12 trong kernel – minh họa kinh điển của \TU
 /lmr/bx/n/12 producer-consumer problem \TU/lmr/m/n/12 (Dijkstra,
  []
@@ -1100,93 +1137,93 @@ File: figures/Pipe.png Graphic file (type bmp)
 File: figures/ProCon.png Graphic file (type bmp)
 <figures/ProCon.png>
  [6]
-Overfull \hbox (8.00363pt too wide) in paragraph at lines 337--340
+Overfull \hbox (8.00363pt too wide) in paragraph at lines 340--343
 \TU/lmr/m/n/12 Trong xv6, vấn đề này được giải quyết bằng cách sử dụng một trườ
 ng khóa là \TU/lmr/m/it/12 SPINLOCK\TU/lmr/m/n/12 . 
  []
 
 Package hyperref Info: bookmark level for unknown lstlisting defaults to 0 on i
-nput line 344.
+nput line 347.
 LaTeX Font Info:    Font shape `TU/lmtt/bx/n' in size <10> not available
-(Font)              Font shape `TU/lmtt/b/n' tried instead on input line 345.
+(Font)              Font shape `TU/lmtt/b/n' tried instead on input line 348.
 [7]
 File: figures/cirbuf.png Graphic file (type bmp)
 <figures/cirbuf.png>
  [8] [9] [10]
-Overfull \hbox (1.18364pt too wide) in paragraph at lines 507--510
+Overfull \hbox (1.18364pt too wide) in paragraph at lines 510--513
 []\TU/lmr/m/n/12 W gửi dữ liệu đến R bằng cách gọi \TU/lmtt/m/n/12 write(fd=4, 
 buf, n)\TU/lmr/m/n/12 : kernel gọi \TU/lmtt/m/n/12 pipewrite()
  []
 
 
-Overfull \hbox (41.0903pt too wide) in paragraph at lines 544--546
+Overfull \hbox (41.0903pt too wide) in paragraph at lines 547--549
 \TU/lmr/m/n/12 User process \TU/lmr/bx/n/12 không gọi trực tiếp \TU/lmtt/m/n/12
  pipewrite()\TU/lmr/m/n/12 /\TU/lmtt/m/n/12 piperead() \TU/lmr/m/n/12 mà gọi qu
 a hàm \TU/lmtt/m/n/12 write()\TU/lmr/m/n/12 /\TU/lmtt/m/n/12 read()
  []
 
 [11]
-Underfull \hbox (badness 4403) in paragraph at lines 645--645
+Underfull \hbox (badness 4403) in paragraph at lines 648--648
 \TU/lmr/m/n/8 sang kernel page table; nhảy tới
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 645--645
+Underfull \hbox (badness 10000) in paragraph at lines 648--648
 []|\TU/lmr/m/n/8 Đọc reg \TU/lmtt/m/n/8 a7 \TU/lmr/m/n/8 (SYS_write=16 /
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 645--645
+Underfull \hbox (badness 10000) in paragraph at lines 648--648
 \TU/lmr/m/n/8 SYS_read=63), dispatch bảng
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 645--645
+Underfull \hbox (badness 10000) in paragraph at lines 648--648
 []|\TU/lmr/m/n/8 Validate \TU/lmtt/m/n/8 fd $\OMS/cmsy/m/n/8 2 \OT1/cmr/m/n/8 [
 0\OML/cmm/m/it/8 ; []\OT1/cmr/m/n/8 )$\TU/lmr/m/n/8 ;
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 645--645
+Underfull \hbox (badness 10000) in paragraph at lines 648--648
 \TU/lmr/m/n/8 trả về \TU/lmtt/m/n/8 struct file* \TU/lmr/m/n/8 từ
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 645--645
+Underfull \hbox (badness 10000) in paragraph at lines 648--648
 []|\TU/lmr/m/n/8 Kiểm tra \TU/lmtt/m/n/8 f->type == FD_PIPE\TU/lmr/m/n/8 ;
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 645--645
+Underfull \hbox (badness 10000) in paragraph at lines 648--648
 []|\TU/lmtt/m/n/8 acquire(&lock)\TU/lmr/m/n/8 ; vòng lặp:
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 645--645
+Underfull \hbox (badness 10000) in paragraph at lines 648--648
 \TU/lmr/m/n/8 copyin/copyout từng byte, kiểm
  []
 
 
-Underfull \hbox (badness 2253) in paragraph at lines 645--645
+Underfull \hbox (badness 2253) in paragraph at lines 648--648
 []|\TU/lmtt/m/n/8 walkaddr() \TU/lmr/m/n/8 dịch VA$\OMS/cmsy/m/n/8 !$\TU/lmr/m/
 n/8 PA (Sv39 3-
  []
 
 
-Underfull \hbox (badness 3735) in paragraph at lines 645--645
+Underfull \hbox (badness 3735) in paragraph at lines 648--648
 []|\TU/lmr/m/n/8 Quét \TU/lmtt/m/n/8 proc[NPROC] \TU/lmr/m/n/8 (64 entry), đổi
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 645--645
+Underfull \hbox (badness 10000) in paragraph at lines 648--648
 []|\TU/lmr/m/n/8 Đặt \TU/lmtt/m/n/8 sstatus.SPP=0 \TU/lmr/m/n/8 (user mode),
  []
 
 [12]
 LaTeX Font Info:    Font shape `TU/lmtt/bx/n' in size <12> not available
-(Font)              Font shape `TU/lmtt/b/n' tried instead on input line 754.
+(Font)              Font shape `TU/lmtt/b/n' tried instead on input line 757.
  [13] [14] [15] [16] [17]
-Overfull \hbox (0.75145pt too wide) in paragraph at lines 979--980
+Overfull \hbox (0.75145pt too wide) in paragraph at lines 982--983
 []\TU/lmr/bx/n/12 CPU cache: \TU/lmr/m/n/12 Hầu hết các dòng CPU hiện đại(Intel
 , AMD, ARM) đều có cacheline
  []
@@ -1198,35 +1235,35 @@ File: lstlang1.sty 2023/02/27 1.9 listings language file
 File: lstlang1.sty 2023/02/27 1.9 listings language file
 ) [19] [20]
 [21]
-Overfull \hbox (16.47159pt too wide) in paragraph at lines 1158--1159
+Overfull \hbox (16.47159pt too wide) in paragraph at lines 1161--1162
 []\TU/lmr/m/n/12 Kiểm tra xem buffer đã đầy chưa, điều kiện \TU/lmtt/m/n/12 pi-
 >nwrite == pi->nread + PIPESIZE
  []
 
 [22]
-Overfull \hbox (0.41164pt too wide) in paragraph at lines 1225--1226
+Overfull \hbox (0.41164pt too wide) in paragraph at lines 1228--1229
 []\TU/lmr/m/n/12 Với \TU/lmtt/m/n/12 chunk_bytes \TU/lmr/m/n/12 nhỏ, số lần gọi
  syscall sẽ nhiều (số lần gọi syscall = \TU/lmtt/m/n/12 total_bytes
  []
 
 [23] [24] [25] [26] [27]
-Overfull \hbox (12.35167pt too wide) in paragraph at lines 1445--1448
+Overfull \hbox (12.35167pt too wide) in paragraph at lines 1448--1451
 \TU/lmr/m/n/12 Trong các phiên bản từ v1 đến v4, cuối mỗi lần \TU/lmtt/m/n/12 p
 ipewrite() \TU/lmr/m/n/12 đều gọi \TU/lmtt/m/n/12 wakeup(&pi->nread)
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 1463--1466
+Underfull \hbox (badness 10000) in paragraph at lines 1466--1469
 
  []
 
 [28]
-Underfull \hbox (badness 10000) in paragraph at lines 1496--1497
+Underfull \hbox (badness 10000) in paragraph at lines 1499--1500
 
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 1498--1500
+Underfull \hbox (badness 10000) in paragraph at lines 1501--1503
 
  []
 
@@ -1234,35 +1271,35 @@ Underfull \hbox (badness 10000) in paragraph at lines 1498--1500
 File: figures/processstate.png Graphic file (type bmp)
 <figures/processstate.png>
 
-Underfull \hbox (badness 10000) in paragraph at lines 1602--1611
+Underfull \hbox (badness 10000) in paragraph at lines 1605--1614
 
  []
 
 [31]
-Underfull \hbox (badness 10000) in paragraph at lines 1626--1629
+Underfull \hbox (badness 10000) in paragraph at lines 1629--1632
 
  []
 
 File: figures/multilevelfeedback.png Graphic file (type bmp)
 <figures/multilevelfeedback.png>
 
-Overfull \hbox (2.42094pt too wide) in paragraph at lines 1631--1638
+Overfull \hbox (2.42094pt too wide) in paragraph at lines 1634--1641
 \TU/lmr/m/n/12 Do đó, để tăng băng thông, thay vì để reader/writer phải chờ đượ
 c quét trong scheduler()
  []
 
 [32]
-Underfull \hbox (badness 10000) in paragraph at lines 1639--1641
+Underfull \hbox (badness 10000) in paragraph at lines 1642--1644
 
  []
 
 [33] [34]
-Underfull \hbox (badness 10000) in paragraph at lines 1728--1732
+Underfull \hbox (badness 10000) in paragraph at lines 1731--1735
 
  []
 
 [35] [36] [37] [38] [39] [40] [41] [42] [43]
-Overfull \hbox (14.1582pt too wide) in paragraph at lines 2168--2172
+Overfull \hbox (14.1582pt too wide) in paragraph at lines 2171--2175
 []\TU/lmr/bx/n/12 Kernel space vs User space: \TU/lmr/m/n/12 Triển khai tối ưu 
 ở kernel space (sửa \TU/lmtt/m/n/12 kernel/pipe.c\TU/lmr/m/n/12 ,
  []
